@@ -149,98 +149,145 @@ function createPBRAsphaltMaps() {
   normCanvas.height = 512;
   const nCtx = normCanvas.getContext('2d');
 
-  // Base de asfalto oscuro con granulado mineral
-  ctx.fillStyle = '#1c1f26';
+  // Base de asfalto desgastado con áridos minerales
+  ctx.fillStyle = '#1b1e24';
   ctx.fillRect(0, 0, 1024, 1024);
 
   const img = ctx.getImageData(0, 0, 1024, 1024);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
-    const grain = (Math.random() - 0.5) * 30;
-    const pebble = Math.random() < 0.09 ? 20 : 0;
-    d[i]     = Math.min(255, Math.max(0, 28 + grain + pebble));
-    d[i + 1] = Math.min(255, Math.max(0, 31 + grain + pebble));
-    d[i + 2] = Math.min(255, Math.max(0, 37 + grain + pebble));
+    const grain = (Math.random() - 0.5) * 34;
+    const pebble = Math.random() < 0.11 ? 24 : (Math.random() < 0.05 ? -18 : 0);
+    d[i]     = Math.min(255, Math.max(0, 27 + grain + pebble));
+    d[i + 1] = Math.min(255, Math.max(0, 30 + grain + pebble));
+    d[i + 2] = Math.min(255, Math.max(0, 35 + grain + pebble));
   }
   ctx.putImageData(img, 0, 0);
 
-  // Huellas de neumáticos pulidas por el tránsito
+  // Parches de bacheo vial (Asphalt repair patches) oscuros y claros para romper la monotonía
+  for (let p = 0; p < 14; p++) {
+    const px = 90 + Math.random() * 820;
+    const py = Math.random() * 1024;
+    const pw = 45 + Math.random() * 130;
+    const ph = 70 + Math.random() * 210;
+    ctx.fillStyle = Math.random() > 0.45 ? 'rgba(12, 14, 18, 0.42)' : 'rgba(52, 56, 64, 0.28)';
+    ctx.fillRect(px, py, pw, ph);
+    ctx.strokeStyle = 'rgba(8, 9, 12, 0.65)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+  }
+
+  // Huellas de neumáticos pulidas y manchas de aceite/grasa en el centro de cada mano
   const trackGrad = ctx.createLinearGradient(0, 0, 1024, 0);
-  trackGrad.addColorStop(0.0, 'rgba(46, 42, 36, 0.55)');
-  trackGrad.addColorStop(0.11, 'rgba(18, 20, 25, 0.2)');
-  trackGrad.addColorStop(0.28, 'rgba(10, 12, 16, 0.62)');
-  trackGrad.addColorStop(0.50, 'rgba(22, 25, 31, 0.15)');
-  trackGrad.addColorStop(0.72, 'rgba(10, 12, 16, 0.62)');
-  trackGrad.addColorStop(0.89, 'rgba(18, 20, 25, 0.2)');
-  trackGrad.addColorStop(1.0, 'rgba(46, 42, 36, 0.55)');
+  trackGrad.addColorStop(0.0, 'rgba(58, 48, 38, 0.72)');  // Polvo de banquina
+  trackGrad.addColorStop(0.11, 'rgba(20, 22, 26, 0.25)');
+  trackGrad.addColorStop(0.20, 'rgba(9, 11, 15, 0.58)');  // Huella rueda izq
+  trackGrad.addColorStop(0.28, 'rgba(6, 7, 10, 0.75)');   // Franja central de aceite/grasa
+  trackGrad.addColorStop(0.36, 'rgba(9, 11, 15, 0.58)');  // Huella rueda der
+  trackGrad.addColorStop(0.50, 'rgba(32, 34, 38, 0.22)');
+  trackGrad.addColorStop(0.64, 'rgba(9, 11, 15, 0.58)');
+  trackGrad.addColorStop(0.72, 'rgba(6, 7, 10, 0.75)');   // Franja central de aceite/grasa
+  trackGrad.addColorStop(0.80, 'rgba(9, 11, 15, 0.58)');
+  trackGrad.addColorStop(0.89, 'rgba(20, 22, 26, 0.25)');
+  trackGrad.addColorStop(1.0, 'rgba(58, 48, 38, 0.72)');
   ctx.fillStyle = trackGrad;
   ctx.fillRect(0, 0, 1024, 1024);
 
-  // Grietas longitudinales selladas con brea (Tar snakes)
-  ctx.strokeStyle = 'rgba(9, 10, 14, 0.72)';
-  ctx.lineWidth = 3;
-  for (let c = 0; c < 6; c++) {
+  // Marcas de caucho y frenadas intermitentes
+  ctx.fillStyle = 'rgba(7, 8, 10, 0.52)';
+  for (let s = 0; s < 18; s++) {
+    const sx = (Math.random() > 0.5 ? 210 : 660) + (Math.random() - 0.5) * 140;
+    const sy = Math.random() * 900;
+    ctx.fillRect(sx, sy, 9 + Math.random() * 8, 80 + Math.random() * 160);
+  }
+
+  // Grietas longitudinales y transversales selladas con brea (Tar snakes)
+  ctx.strokeStyle = 'rgba(6, 7, 10, 0.82)';
+  ctx.lineWidth = 3.2;
+  for (let c = 0; c < 9; c++) {
     ctx.beginPath();
-    let cx = 140 + Math.random() * 740;
+    let cx = 110 + Math.random() * 804;
     ctx.moveTo(cx, 0);
-    for (let y = 0; y <= 1024; y += 64) {
-      cx += (Math.random() - 0.5) * 24;
+    for (let y = 0; y <= 1024; y += 48) {
+      cx += (Math.random() - 0.5) * 32;
       ctx.lineTo(cx, y);
     }
     ctx.stroke();
   }
 
-  // Banquinas de ripio compactado en los bordes
-  const leftShoulder = ctx.createLinearGradient(0, 0, 72, 0);
-  leftShoulder.addColorStop(0, '#42392f');
-  leftShoulder.addColorStop(0.6, '#2d2925');
+  // Banquinas de ripio, tierra suelta y polvo invadiendo el borde del asfalto
+  const leftShoulder = ctx.createLinearGradient(0, 0, 95, 0);
+  leftShoulder.addColorStop(0, '#4a3e31');
+  leftShoulder.addColorStop(0.55, '#362f28');
   leftShoulder.addColorStop(1, 'rgba(28,31,38,0)');
   ctx.fillStyle = leftShoulder;
-  ctx.fillRect(0, 0, 72, 1024);
+  ctx.fillRect(0, 0, 95, 1024);
 
-  const rightShoulder = ctx.createLinearGradient(952, 0, 1024, 0);
+  const rightShoulder = ctx.createLinearGradient(929, 0, 1024, 0);
   rightShoulder.addColorStop(0, 'rgba(28,31,38,0)');
-  rightShoulder.addColorStop(0.4, '#2d2925');
-  rightShoulder.addColorStop(1, '#42392f');
+  rightShoulder.addColorStop(0.45, '#362f28');
+  rightShoulder.addColorStop(1, '#4a3e31');
   ctx.fillStyle = rightShoulder;
-  ctx.fillRect(952, 0, 72, 1024);
+  ctx.fillRect(929, 0, 95, 1024);
 
-  // Bandas sonoras (Rumble strips) labradas en la banquina
-  ctx.fillStyle = 'rgba(15, 17, 22, 0.45)';
+  // Bandas sonoras (Rumble strips) labradas con suciedad acumulada
+  ctx.fillStyle = 'rgba(12, 14, 18, 0.55)';
   for (let y = 0; y < 1024; y += 32) {
     ctx.fillRect(42, y, 22, 14);
     ctx.fillRect(960, y, 22, 14);
   }
 
-  // Doble línea amarilla central reflectante
-  ctx.fillStyle = '#eab308';
+  // Doble línea amarilla central y líneas blancas laterales
+  ctx.fillStyle = '#d99b07';
   ctx.fillRect(496, 0, 10, 1024);
   ctx.fillRect(518, 0, 10, 1024);
 
-  // Líneas blancas continuas de borde de calzada
-  ctx.fillStyle = '#f1f5f9';
+  ctx.fillStyle = '#dce3ec';
   ctx.fillRect(68, 0, 14, 1024);
   ctx.fillRect(942, 0, 14, 1024);
 
-  // Roughness Map
-  rCtx.fillStyle = '#b8b8b8';
+  // Desgaste y suciedad sobre la pintura vial (para que no se vea pintura digital limpia)
+  for (let w = 0; w < 220; w++) {
+    const wy = Math.random() * 1024;
+    const wh = 4 + Math.random() * 18;
+    ctx.fillStyle = 'rgba(27, 30, 36, 0.58)';
+    ctx.fillRect(494, wy, 36, wh);
+    ctx.fillStyle = 'rgba(54, 47, 40, 0.55)';
+    ctx.fillRect(65, (wy + 170) % 1024, 20, wh * 1.4);
+    ctx.fillRect(939, (wy + 410) % 1024, 20, wh * 1.4);
+  }
+
+  // Manchas irregulares de tierra y piedritas sueltas en los bordes
+  for (let g = 0; g < 450; g++) {
+    const gx = Math.random() < 0.5 ? Math.random() * 135 : 889 + Math.random() * 135;
+    const gy = Math.random() * 1024;
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(92, 78, 62, 0.45)' : 'rgba(24, 22, 19, 0.5)';
+    ctx.fillRect(gx, gy, 3 + Math.random() * 5, 3 + Math.random() * 5);
+  }
+
+  // Roughness Map (huellas y manchas de aceite más reflectantes a contraluz)
+  rCtx.fillStyle = '#c2c2c2';
   rCtx.fillRect(0, 0, 512, 512);
   const rGrad = rCtx.createLinearGradient(0, 0, 512, 0);
-  rGrad.addColorStop(0, '#e2e2e2');
-  rGrad.addColorStop(0.28, '#505050');
-  rGrad.addColorStop(0.5, '#a2a2a2');
-  rGrad.addColorStop(0.72, '#505050');
-  rGrad.addColorStop(1, '#e2e2e2');
+  rGrad.addColorStop(0, '#eaeaea');
+  rGrad.addColorStop(0.20, '#5a5a5a');
+  rGrad.addColorStop(0.28, '#383838'); // Brillo aceitoso en la huella
+  rGrad.addColorStop(0.36, '#5a5a5a');
+  rGrad.addColorStop(0.50, '#b0b0b0');
+  rGrad.addColorStop(0.64, '#5a5a5a');
+  rGrad.addColorStop(0.72, '#383838');
+  rGrad.addColorStop(0.80, '#5a5a5a');
+  rGrad.addColorStop(1, '#eaeaea');
   rCtx.fillStyle = rGrad;
   rCtx.fillRect(0, 0, 512, 512);
 
-  // Normal Map
+  // Normal Map con micro-relieve de piedras y grietas
   const nImg = nCtx.createImageData(512, 512);
   const nd = nImg.data;
   for (let i = 0; i < nd.length; i += 4) {
-    nd[i]     = 128 + (Math.random() - 0.5) * 48;
-    nd[i + 1] = 128 + (Math.random() - 0.5) * 48;
-    nd[i + 2] = 245;
+    nd[i]     = 128 + (Math.random() - 0.5) * 58;
+    nd[i + 1] = 128 + (Math.random() - 0.5) * 58;
+    nd[i + 2] = 242;
     nd[i + 3] = 255;
   }
   nCtx.putImageData(nImg, 0, 0);
@@ -259,6 +306,109 @@ function createPBRAsphaltMaps() {
   normTex.wrapT = THREE.RepeatWrapping;
 
   return { diffTex, roughTex, normTex };
+}
+
+function createWeatheredGuardrailTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+
+  // Perfil acanalado W-Beam de acero galvanizado con suciedad y óxido
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0.0, '#94a3b8');
+  g.addColorStop(0.25, '#cbd5e1');
+  g.addColorStop(0.50, '#475569'); // Canal central hundido
+  g.addColorStop(0.75, '#cbd5e1');
+  g.addColorStop(1.0, '#64748b');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 128);
+
+  // Manchas de óxido, musgo y salpicaduras de barro vial
+  for (let i = 0; i < 180; i++) {
+    ctx.fillStyle = Math.random() > 0.4 ? 'rgba(92, 64, 42, 0.35)' : 'rgba(45, 52, 40, 0.35)';
+    ctx.fillRect(Math.random() * 256, 45 + Math.random() * 83, 4 + Math.random() * 14, 6 + Math.random() * 25);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 30);
+  return tex;
+}
+
+function createGrimeMetalTexture(baseHex, grimeAmount = 0.35) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Veta de metal cepillado y micro-rayones de uso en ruta
+  for (let i = 0; i < 400; i++) {
+    ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const y = Math.random() * 256;
+    ctx.moveTo(0, y);
+    ctx.lineTo(256, y + (Math.random() - 0.5) * 4);
+    ctx.stroke();
+  }
+
+  // Salpicaduras de polvo seco, barro e insectos de viaje
+  for (let i = 0; i < 320 * grimeAmount; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const r = 1 + Math.random() * 4.5;
+    ctx.fillStyle = Math.random() > 0.35 ? 'rgba(78, 64, 48, 0.38)' : 'rgba(28, 24, 20, 0.42)';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createDistressedLeatherTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#583118';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Pátina de cuero gastado, pliegues oscuros y desgaste en nudillos
+  for (let i = 0; i < 500; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(32, 16, 6, 0.22)' : 'rgba(130, 82, 44, 0.16)';
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 4 + Math.random() * 14, 2 + Math.random() * 6);
+  }
+  // Costuras claras en los bordes
+  ctx.strokeStyle = 'rgba(195, 155, 105, 0.55)';
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, 236, 236);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createContactShadowTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 62);
+  g.addColorStop(0, 'rgba(0, 0, 0, 0.78)');
+  g.addColorStop(0.55, 'rgba(0, 0, 0, 0.42)');
+  g.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
 }
 
 function createTerrainPBRMaps() {
@@ -551,29 +701,37 @@ const envRT = pmremGenerator.fromScene(envScene, 0.04);
 scene.environment = envRT.texture;
 
 // ============================================================================
-// 5. ILUMINACIÓN Y SOMBRAS DINÁMICAS QUE SIGUEN AL JUGADOR
+// 5. ILUMINACIÓN, CONTRASTE DRAMÁTICO Y SOMBRAS DE ALTA DENSIDAD
 // ============================================================================
-const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x2d3a28, 0.75);
+const hemiLight = new THREE.HemisphereLight(0xffedd5, 0x1e261c, 0.68);
 scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xfff1d6, 2.0);
+const sunLight = new THREE.DirectionalLight(0xffe4b5, 2.35);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 5;
-sunLight.shadow.camera.far = 260;
-const shadowCamSize = 65;
+sunLight.shadow.camera.near = 1.5;
+sunLight.shadow.camera.far = 220;
+const shadowCamSize = 42; // Frustum concentrado para sombras súper definidas en moto y ruta
 sunLight.shadow.camera.left = -shadowCamSize;
 sunLight.shadow.camera.right = shadowCamSize;
 sunLight.shadow.camera.top = shadowCamSize;
 sunLight.shadow.camera.bottom = -shadowCamSize;
-sunLight.shadow.bias = -0.0005;
+sunLight.shadow.bias = -0.0003;
 scene.add(sunLight);
 scene.add(sunLight.target);
 
-const motoHeadlight = new THREE.SpotLight(0xfffae0, 2.8, 120, Math.PI / 5, 0.45, 1.2);
+const motoHeadlight = new THREE.SpotLight(0xfffae0, 3.2, 130, Math.PI / 4.8, 0.48, 1.2);
 scene.add(motoHeadlight);
 scene.add(motoHeadlight.target);
+
+const contactShadowTex = createContactShadowTexture();
+const contactShadowMat = new THREE.MeshBasicMaterial({
+  map: contactShadowTex,
+  transparent: true,
+  opacity: 0.75,
+  depthWrite: false
+});
 
 // ============================================================================
 // 6. TERRENO 3D CONTINUO (BANQUINAS SUAVES, ACANTILADOS, VALLE Y LAGO)
@@ -582,17 +740,17 @@ const RIBBON_POINTS = 120;
 const POINT_STEP = 3.5;
 const ROAD_WIDTH = 11.4;
 
-// A. Carretera PBR con Normal Map y Roughness Map
+// A. Carretera PBR con Normal Map, Roughness Map, Parches y Suciedad Vial
 const asphaltMaps = createPBRAsphaltMaps();
 const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
 const roadMat = new THREE.MeshStandardMaterial({
   map: asphaltMaps.diffTex,
   roughnessMap: asphaltMaps.roughTex,
   normalMap: asphaltMaps.normTex,
-  normalScale: new THREE.Vector2(0.45, 0.45),
-  roughness: 0.75,
-  metalness: 0.15,
-  envMapIntensity: 1.3,
+  normalScale: new THREE.Vector2(0.58, 0.58),
+  roughness: 0.78,
+  metalness: 0.16,
+  envMapIntensity: 1.45,
   side: THREE.DoubleSide
 });
 const roadMesh = new THREE.Mesh(roadGeo, roadMat);
@@ -614,9 +772,9 @@ const terrainMaps = createTerrainPBRMaps();
 const terrainMat = new THREE.MeshStandardMaterial({
   map: terrainMaps.diff,
   normalMap: terrainMaps.norm,
-  normalScale: new THREE.Vector2(0.65, 0.65),
+  normalScale: new THREE.Vector2(0.75, 0.75),
   vertexColors: true,
-  roughness: 0.88,
+  roughness: 0.90,
   metalness: 0.04,
   side: THREE.DoubleSide
 });
@@ -641,12 +799,14 @@ waterMesh.rotation.x = -Math.PI / 2;
 waterMesh.position.y = -6.5;
 scene.add(waterMesh);
 
-// D. Guardarraíl Metálico 3D Continuo (Borde del valle izquierdo)
-const guardrailGeo = new THREE.PlaneGeometry(0.42, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
+// D. Guardarraíl Metálico 3D Acanalado con Óxido y Barro Vial
+const guardrailGeo = new THREE.PlaneGeometry(0.44, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
 const guardrailMat = new THREE.MeshStandardMaterial({
-  color: 0xcbd5e1,
-  metalness: 0.88,
-  roughness: 0.26,
+  map: createWeatheredGuardrailTexture(),
+  normalMap: terrainMaps.norm,
+  normalScale: new THREE.Vector2(0.25, 0.25),
+  metalness: 0.78,
+  roughness: 0.38,
   side: THREE.DoubleSide
 });
 const guardrailMesh = new THREE.Mesh(guardrailGeo, guardrailMat);
@@ -656,23 +816,33 @@ scene.add(guardrailMesh);
 const guardrailPosAttr = guardrailGeo.attributes.position;
 guardrailPosAttr.setUsage(THREE.DynamicDrawUsage);
 
-// E. Tachas Reflectantes, Postes de Guardarraíl y Carteles Viales de Curva
+// E. Tachas Reflectantes, Postes, Arbustos Secos (Coirón) y Carteles Viales Desgastados
 const catEyesGroup = new THREE.Group();
 const catEyeGeo = new THREE.BoxGeometry(0.16, 0.035, 0.22);
 const catEyeMat = new THREE.MeshStandardMaterial({
   color: 0xfbbf24,
   emissive: 0xf59e0b,
-  emissiveIntensity: 0.6,
+  emissiveIntensity: 0.65,
   roughness: 0.2
 });
 const postGeo = new THREE.BoxGeometry(0.12, 0.76, 0.12);
+const woodPostMat = new THREE.MeshStandardMaterial({
+  color: 0x4a3728,
+  normalMap: terrainMaps.norm,
+  roughness: 0.92
+});
+const shrubMat = new THREE.MeshStandardMaterial({
+  color: 0x6e6338, // Coirón / pasto seco patagónico en banquina
+  map: terrainMaps.diff,
+  roughness: 0.92
+});
 const reflGeo = new THREE.BoxGeometry(0.04, 0.16, 0.08);
 const reflRedMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
 const reflWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const chevronMat = new THREE.MeshStandardMaterial({
   map: createChevronSignTexture(),
-  roughness: 0.3,
-  metalness: 0.2
+  roughness: 0.35,
+  metalness: 0.25
 });
 
 const roadDetails = [];
@@ -685,7 +855,7 @@ for (let i = 0; i < 45; i++) {
   g.add(ce);
 
   // Poste izquierdo de guardarraíl + reflector rojo
-  const postL = new THREE.Mesh(postGeo, guardrailMat);
+  const postL = new THREE.Mesh(postGeo, woodPostMat);
   postL.position.set(-ROAD_WIDTH / 2 - 0.18, 0.35, 0);
   postL.castShadow = true;
   g.add(postL);
@@ -695,7 +865,7 @@ for (let i = 0; i < 45; i++) {
   g.add(refL);
 
   // Mojón delineador derecho con reflector blanco
-  const postR = new THREE.Mesh(postGeo, guardrailMat);
+  const postR = new THREE.Mesh(postGeo, woodPostMat);
   postR.position.set(ROAD_WIDTH / 2 + 0.45, 0.35, 0);
   postR.castShadow = true;
   g.add(postR);
@@ -704,15 +874,23 @@ for (let i = 0; i < 45; i++) {
   refR.position.set(ROAD_WIDTH / 2 + 0.38, 0.58, 0);
   g.add(refR);
 
+  // Matas de pasto seco / arbustos achaparrados junto a la banquina para realismo orgánico
+  const shrub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 1), shrubMat);
+  shrub.scale.set(1.3, 0.65, 1.2);
+  shrub.position.set(ROAD_WIDTH / 2 + 1.1 + (i % 3) * 0.45, 0.18, 2.2);
+  shrub.castShadow = true;
+  shrub.receiveShadow = true;
+  g.add(shrub);
+
   // Cada 5 postes añadimos un cartel vial de curva (Chevron amarillo/negro)
   if (i % 5 === 0) {
     const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8), guardrailMat);
-    signPole.position.set(ROAD_WIDTH / 2 + 1.35, 0.9, 0);
+    signPole.position.set(ROAD_WIDTH / 2 + 1.45, 0.9, 0);
     signPole.castShadow = true;
     g.add(signPole);
 
     const signBoard = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.04), chevronMat);
-    signBoard.position.set(ROAD_WIDTH / 2 + 1.35, 1.65, 0);
+    signBoard.position.set(ROAD_WIDTH / 2 + 1.45, 1.65, 0);
     signBoard.castShadow = true;
     g.add(signBoard);
   }
@@ -721,6 +899,26 @@ for (let i = 0; i < 45; i++) {
   roadDetails.push({ group: g, distOffset: i * 9 });
 }
 scene.add(catEyesGroup);
+
+// F. Sistema de Partículas 3D de Polvo en Suspensión y Tierra Vial a Contraluz
+const DUST_COUNT = 420;
+const dustGeo = new THREE.BufferGeometry();
+const dustPositions = new Float32Array(DUST_COUNT * 3);
+for (let i = 0; i < DUST_COUNT; i++) {
+  dustPositions[i * 3]     = (Math.random() - 0.5) * 26;
+  dustPositions[i * 3 + 1] = Math.random() * 4.5;
+  dustPositions[i * 3 + 2] = -Math.random() * 75;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+const dustMat = new THREE.PointsMaterial({
+  color: 0xfde68a,
+  size: 0.085,
+  transparent: true,
+  opacity: 0.48,
+  depthWrite: false
+});
+const dustParticles = new THREE.Points(dustGeo, dustMat);
+scene.add(dustParticles);
 
 // ============================================================================
 // 7. BOSQUE ALPINO 3D TEXTURIZADO Y AFLORAMIENTOS ROCOSOS
@@ -839,6 +1037,12 @@ for (let i = 0; i < 70; i++) {
   tree.scale.set(sc, sc * (0.95 + (i % 3) * 0.12), sc);
   wrapper.add(tree);
 
+  // Sombra de contacto (Ambient Occlusion) en la base del árbol para que no flote
+  const treeAo = new THREE.Mesh(new THREE.PlaneGeometry(5.5 * sc, 5.5 * sc), contactShadowMat);
+  treeAo.rotation.x = -Math.PI / 2;
+  treeAo.position.y = 0.28;
+  wrapper.add(treeAo);
+
   if (i % 2 === 0) {
     const rock = createSculptedRockBoulder();
     rock.position.set(-1.6, 0.5, 1.3);
@@ -860,7 +1064,7 @@ for (let i = 0; i < 70; i++) {
 scene.add(forestGroup);
 
 // ============================================================================
-// 8. TRÁFICO 3D MULTI-PIEZA (AUTOS DEPORTIVOS, SUVs Y CAMIONES)
+// 8. TRÁFICO 3D MULTI-PIEZA CON SOMBRAS DE CONTACTO AO Y DESGASTE
 // ============================================================================
 const trafficGroup = new THREE.Group();
 const vehicles = [
@@ -876,19 +1080,28 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
   const paintMat = new THREE.MeshStandardMaterial({
     color: colorHex,
     metalness: 0.78,
-    roughness: 0.18,
+    roughness: 0.22,
     envMapIntensity: 1.6
   });
-  const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.7 });
+  const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.75 });
   const glassMat = new THREE.MeshStandardMaterial({ color: 0x090d16, metalness: 0.95, roughness: 0.05, envMapIntensity: 2.0 });
   const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.1 });
-  const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const headlightMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
   const taillightMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
+
+  // Sombra de contacto AO oscura bajo todo el chasis del vehículo
+  const aoLen = type === 'truck' ? 12.2 : 5.4;
+  const aoWid = type === 'truck' ? 3.4 : 2.5;
+  const carAo = new THREE.Mesh(new THREE.PlaneGeometry(aoWid, aoLen), contactShadowMat);
+  carAo.rotation.x = -Math.PI / 2;
+  carAo.position.set(0, 0.06, type === 'truck' ? 0.4 : 0);
+  group.add(carAo);
 
   if (type === 'truck') {
     const cab = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.9, 2.6), paintMat);
     cab.position.set(0, 1.85, -3.2);
     cab.castShadow = true;
+    cab.receiveShadow = true;
     group.add(cab);
 
     const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.95, 0.1), glassMat);
@@ -899,10 +1112,15 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
     grille.position.set(0, 1.25, -4.51);
     group.add(grille);
 
-    const trailerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4, metalness: 0.3 });
+    const trailerMat = new THREE.MeshStandardMaterial({
+      map: createGrimeMetalTexture('#cbd5e1', 0.55),
+      roughness: 0.48,
+      metalness: 0.32
+    });
     const trailer = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.3, 7.2), trailerMat);
     trailer.position.set(0, 2.25, 1.9);
     trailer.castShadow = true;
+    trailer.receiveShadow = true;
     group.add(trailer);
 
     const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.1), headlightMat); fl1.position.set(-0.95, 0.9, -4.52); group.add(fl1);
@@ -917,6 +1135,7 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
     const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(w, hBody, l), paintMat);
     lowerBody.position.set(0, 0.4 + hBody / 2, 0);
     lowerBody.castShadow = true;
+    lowerBody.receiveShadow = true;
     group.add(lowerBody);
 
     const cabLen = isSuv ? 2.7 : 2.1;
@@ -966,70 +1185,70 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
 }
 
 // ============================================================================
-// 9. CABINA EN PRIMERA PERSONA: SCRAMBLER CLÁSICA (TRIUMPH 400 X / BEAR 650)
-//    Vista del piloto más alta y erguida, reloj circular único, manillar ancho
-//    con barra transversal y pad acolchado, faro redondo con rejilla, espejos
-//    redondos clásicos, cubrepuños y tanque lágrima bitono con tapa Monza.
+// 9. CABINA EN PRIMERA PERSONA: SCRAMBLER CLÁSICA CON TEXTURAS DE USO Y SUCIEDAD
 // ============================================================================
 const cockpitGroup = new THREE.Group();
-// Posición baja respecto a los ojos del piloto (postura erguida de Scrambler mirando desde arriba)
 cockpitGroup.position.set(0, -0.14, -0.05);
 cockpitGroup.rotation.x = 0.09;
 
 const carbonWeaveTex = createCarbonWeaveTexture();
 const scramblerGreenMat = new THREE.MeshPhysicalMaterial({
-  color: 0x1e3a2f, // British Racing / Khaki Scrambler Green
-  metalness: 0.65,
-  roughness: 0.16,
-  clearcoat: 1.0,
-  clearcoatRoughness: 0.08,
-  envMapIntensity: 2.0
+  map: createGrimeMetalTexture('#1f3b30', 0.22),
+  roughness: 0.20,
+  metalness: 0.58,
+  clearcoat: 0.92,
+  clearcoatRoughness: 0.14,
+  envMapIntensity: 1.9
 });
 const creamBadgeMat = new THREE.MeshPhysicalMaterial({
-  color: 0xf5f0e1, // Crema clásico bitono
-  metalness: 0.25,
-  roughness: 0.18,
-  clearcoat: 1.0,
-  envMapIntensity: 1.6
+  map: createGrimeMetalTexture('#efe8d5', 0.25),
+  metalness: 0.22,
+  roughness: 0.24,
+  clearcoat: 0.85,
+  envMapIntensity: 1.5
 });
 const goldAnodizedMat = new THREE.MeshStandardMaterial({
-  color: 0xd4af37, // Horquilla invertida dorada (Triumph 400 X / Showa)
-  metalness: 0.90,
-  roughness: 0.20,
+  map: createGrimeMetalTexture('#d4af37', 0.28),
+  metalness: 0.88,
+  roughness: 0.24,
   envMapIntensity: 1.8
 });
 const chromeBrightMat = new THREE.MeshStandardMaterial({
   color: 0xf8fafc,
   metalness: 0.98,
-  roughness: 0.06,
+  roughness: 0.07,
   envMapIntensity: 2.4
 });
 const brushedAluminumMat = new THREE.MeshStandardMaterial({
-  color: 0xcbd5e1,
-  metalness: 0.88,
-  roughness: 0.26,
+  map: createGrimeMetalTexture('#cbd5e1', 0.45),
+  normalMap: terrainMaps.norm,
+  normalScale: new THREE.Vector2(0.08, 0.08),
+  metalness: 0.86,
+  roughness: 0.32,
   envMapIntensity: 1.6
 });
 const darkTitaniumMat = new THREE.MeshStandardMaterial({
-  color: 0x262b33,
-  metalness: 0.80,
-  roughness: 0.32,
+  map: createGrimeMetalTexture('#262b33', 0.35),
+  metalness: 0.78,
+  roughness: 0.36,
   envMapIntensity: 1.4
 });
 const matteBlackMat = new THREE.MeshStandardMaterial({
-  color: 0x12151a,
-  roughness: 0.84,
-  metalness: 0.15
+  map: createGrimeMetalTexture('#14171d', 0.42),
+  roughness: 0.82,
+  metalness: 0.18
 });
 const vintageLeatherMat = new THREE.MeshStandardMaterial({
-  color: 0x5c3317, // Cuero marrón cognac clásico (guantes y correa)
+  map: createDistressedLeatherTexture(),
   normalMap: terrainMaps.norm,
-  normalScale: new THREE.Vector2(0.25, 0.25),
-  roughness: 0.58,
-  metalness: 0.10
+  normalScale: new THREE.Vector2(0.32, 0.32),
+  roughness: 0.62,
+  metalness: 0.08
 });
 const rubberPadMat = new THREE.MeshStandardMaterial({
   color: 0x181a1f,
+  normalMap: terrainMaps.norm,
+  normalScale: new THREE.Vector2(0.35, 0.35),
   roughness: 0.92,
   metalness: 0.05
 });
@@ -1461,6 +1680,29 @@ steeringAssembly.add(fluidCap);
 
 cockpitGroup.add(steeringAssembly);
 
+// Haz de luz volumétrico sutil del faro redondo proyectado hacia la ruta
+const beamConeGeo = new THREE.ConeGeometry(2.6, 16.0, 24, 1, true);
+beamConeGeo.rotateX(Math.PI / 2);
+const beamConeMat = new THREE.MeshBasicMaterial({
+  color: 0xfffbeb,
+  transparent: true,
+  opacity: 0.055,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending
+});
+const headlightBeamCone = new THREE.Mesh(beamConeGeo, beamConeMat);
+headlightBeamCone.position.set(0, -0.45, -8.8);
+cockpitGroup.add(headlightBeamCone);
+
+// Activar auto-sombreado en toda la cabina (el manillar y las manos proyectan sombra real sobre el tanque)
+cockpitGroup.traverse((child) => {
+  if (child.isMesh && child !== dashScreen && child !== gaugeGlass && child !== headlightBeamCone) {
+    child.castShadow = true;
+    child.receiveShadow = true;
+  }
+});
+
 camera.add(cockpitGroup);
 scene.add(camera);
 
@@ -1480,6 +1722,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyL') {
     simState.headlights = !simState.headlights;
     motoHeadlight.visible = simState.headlights;
+    headlightBeamCone.visible = simState.headlights;
   }
   if (e.code === 'KeyH') window.soundEngine.playHorn();
 });
@@ -1679,10 +1922,23 @@ function updateHandlingPhysics(dt) {
   );
   motoHeadlight.target.updateMatrixWorld();
 
-  // Cúpula celeste y lago centrados respecto al avance
+  // Cúpula celeste, lago y partículas de polvo en suspensión centrados respecto al avance
   skyDome.position.copy(camera.position);
   waterMesh.position.x = camera.position.x - 180;
   waterMesh.position.z = camera.position.z - 200;
+
+  dustParticles.position.set(camera.position.x, roadOri.y, camera.position.z);
+  dustParticles.rotation.y = roadOri.yaw;
+  const dArr = dustGeo.attributes.position.array;
+  for (let i = 0; i < DUST_COUNT; i++) {
+    dArr[i * 3 + 2] += (speedMps * 0.85 + 2.5) * dt;
+    if (dArr[i * 3 + 2] > 2.0) {
+      dArr[i * 3 + 2] = -72.0;
+      dArr[i * 3] = (Math.random() - 0.5) * 26;
+      dArr[i * 3 + 1] = Math.random() * 4.2;
+    }
+  }
+  dustGeo.attributes.position.needsUpdate = true;
 
   // Actualizar Árboles 3D y Rocas usando la función exacta de elevación del terreno
   natureObjects.forEach(p => {
