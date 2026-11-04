@@ -1188,8 +1188,9 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
 // 9. CABINA EN PRIMERA PERSONA: SCRAMBLER CLÁSICA CON TEXTURAS DE USO Y SUCIEDAD
 // ============================================================================
 const cockpitGroup = new THREE.Group();
-cockpitGroup.position.set(0, -0.14, -0.05);
-cockpitGroup.rotation.x = 0.09;
+// Cámara posicionada más arriba y más atrás (a la altura real de los ojos del piloto sentado en el asiento)
+cockpitGroup.position.set(0, -0.26, -0.26);
+cockpitGroup.rotation.x = 0.16;
 
 const carbonWeaveTex = createCarbonWeaveTexture();
 const scramblerGreenMat = new THREE.MeshPhysicalMaterial({
@@ -1303,14 +1304,23 @@ headlightGroup.add(flyscreen);
   headlightGroup.add(amberLens);
 });
 
-// Guardabarros delantero de aluminio cepillado asomando abajo adelante
+// Guardabarros delantero de aluminio cepillado y neumático con tacos Scrambler asomando abajo adelante
 const frontFender = new THREE.Mesh(
-  new THREE.BoxGeometry(0.13, 0.015, 0.26),
+  new THREE.BoxGeometry(0.13, 0.015, 0.28),
   brushedAluminumMat
 );
-frontFender.position.set(0, -0.16, -0.09);
-frontFender.rotation.x = 0.22;
+frontFender.position.set(0, -0.15, -0.10);
+frontFender.rotation.x = 0.20;
 headlightGroup.add(frontFender);
+
+const frontTireCrown = new THREE.Mesh(
+  new THREE.TorusGeometry(0.28, 0.068, 16, 32, Math.PI * 0.75),
+  rubberPadMat
+);
+frontTireCrown.rotation.y = Math.PI / 2;
+frontTireCrown.rotation.z = Math.PI * 0.12;
+frontTireCrown.position.set(0, -0.44, -0.12);
+headlightGroup.add(frontTireCrown);
 
 cockpitGroup.add(headlightGroup);
 
@@ -1323,9 +1333,9 @@ const dashTexture = new THREE.CanvasTexture(dashCanvas);
 dashTexture.anisotropy = 4;
 
 const dashGroup = new THREE.Group();
-// Montado ligeramente desplazado/centrado sobre las torretas, inclinado hacia la vista alta del piloto
-dashGroup.position.set(0, -0.038, -0.54);
-dashGroup.rotation.x = -0.42;
+// Montado sobre las torretas e inclinado hacia los ojos altos del piloto
+dashGroup.position.set(0, -0.032, -0.53);
+dashGroup.rotation.x = -0.52;
 
 // Copa cilíndrica trasera en aluminio cepillado y negro
 const gaugeCup = new THREE.Mesh(new THREE.CylinderGeometry(0.096, 0.088, 0.042, 48), matteBlackMat);
@@ -1648,11 +1658,11 @@ function createHandlebarSide(isLeft) {
     handGroup.add(finger);
   }
 
-  // Manga de campera encerada oscura tipo Barbour / Scrambler
+  // Manga de campera encerada oscura extendida hacia los hombros del piloto sentado más atrás
   const jacketMat = new THREE.MeshStandardMaterial({ color: 0x1c211e, roughness: 0.78, metalness: 0.08 });
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.060, 0.38, 16), jacketMat);
-  sleeve.position.set(s * 0.02, -0.11, 0.17);
-  sleeve.rotation.x = Math.PI / 2.9;
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.062, 0.48, 16), jacketMat);
+  sleeve.position.set(s * 0.04, -0.10, 0.23);
+  sleeve.rotation.x = Math.PI / 2.45;
   sleeve.rotation.z = s * -0.12;
   handGroup.add(sleeve);
 
@@ -1888,13 +1898,13 @@ function updateHandlingPhysics(dt) {
   const vib = (simState.rpm / simState.maxRpm) * 0.004 + (simState.onRumble ? 0.022 : 0) + speedWindBuffet;
 
   camera.position.x = roadOri.x + (perpX * simState.laneOffset) + (Math.random() - 0.5) * vib;
-  // Vista del piloto más alta (postura erguida de Scrambler clásica)
-  camera.position.y = roadOri.y + 1.66 + (Math.random() - 0.5) * vib;
+  // Vista real a la altura de los ojos del piloto sentado erguido en el asiento de la Scrambler
+  camera.position.y = roadOri.y + 1.92 + (Math.random() - 0.5) * vib;
   camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
 
   camera.rotation.set(0, 0, 0);
   camera.rotation.y = roadOri.yaw + simState.headLookApex;
-  camera.rotation.x = roadOri.pitch - 0.035 + simState.pitchSuspension;
+  camera.rotation.x = roadOri.pitch - 0.055 + simState.pitchSuspension;
   camera.rotation.z = -simState.leanAngle * 0.74 + roadOri.roll;
 
   camera.fov = 64 + (simState.speed / simState.maxSpeed) * 11;
