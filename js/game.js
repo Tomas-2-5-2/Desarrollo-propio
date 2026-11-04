@@ -1,4 +1,4 @@
-// Motor Gráfico 3D Ultra Pro: Física G-Force, Trazada con Mirada al Ápice, Cartelería Vial y Telemetría TFT
+// Motor Gráfico 3D Ultra Realista: Control Intuitivo, Trazada Fina, Paisaje Alpino de Alta Gama y Vegetación Orgánica
 
 const container = document.getElementById('webgl-container');
 const btnFullscreen = document.getElementById('btn-fullscreen');
@@ -36,14 +36,13 @@ const simState = {
   bikeHealth: 100,
   money: 180,
   
-  // Dinámica de Conducción y Fuerzas G
+  // Control y Física de Moto Realista
   playerDistance: 0,  // Metros recorridos
-  laneOffset: 1.5,    // Desplazamiento lateral (-4.2 a +4.2)
-  lateralVelocity: 0, // m/s
-  leanAngle: 0,       // Inclinación chasis (rad)
-  steeringInput: 0,   // Input suavizado
-  pitchSuspension: 0, // Inmersión de horquilla delantera
-  headLookApex: 0,    // Mirada del piloto hacia el ápice de la curva
+  laneOffset: 1.6,    // -4.5 (izq) a +4.5 (der)
+  steeringInput: 0,   // -1 (izq) a +1 (der)
+  leanAngle: 0,       // Inclinación física de la moto
+  pitchSuspension: 0, // Hundimiento de horquilla delantera
+  headLookApex: 0,    // Mirada anticipatoria hacia la curva
   
   targetDistanceKm: 16.0,
   odometer: 0,
@@ -58,8 +57,9 @@ const simState = {
 // ==========================================
 
 function getRoadPoint(dist) {
-  const x = Math.sin(dist * 0.007) * 26 + Math.cos(dist * 0.003) * 14;
-  const y = Math.sin(dist * 0.005) * 2.8 + Math.cos(dist * 0.01) * 1.2 + 0.1;
+  // Curvas armoniosas tipo paso alpino
+  const x = Math.sin(dist * 0.0065) * 26 + Math.cos(dist * 0.0028) * 14;
+  const y = Math.sin(dist * 0.0045) * 2.5 + Math.cos(dist * 0.009) * 1.2 + 0.15;
   const z = -dist;
   return { x, y, z };
 }
@@ -70,17 +70,18 @@ function getRoadOrientation(dist) {
 
   const dx = p1.x - p0.x;
   const dy = p1.y - p0.y;
-  const dz = -(p1.z - p0.z);
+  const dz = -(p1.z - p0.z); // Distancia positiva hacia adelante
 
+  // Rumbo correcto en Three.js mirando hacia -Z:
   const yaw = -Math.atan2(dx, dz);
   const pitch = -Math.atan2(dy, dz);
-  const roll = (dx / dz) * 0.42;
+  const roll = (dx / dz) * 0.40;
 
   return { x: p0.x, y: p0.y, z: p0.z, yaw, pitch, roll, curveRate: dx / dz };
 }
 
 // ==========================================
-// 2. TEXTURAS PROCEDURALES PBR
+// 2. TEXTURAS PROCEDURALES PBR DE ALTA DEFINICIÓN
 // ==========================================
 
 function createAsphaltTexture() {
@@ -89,6 +90,7 @@ function createAsphaltTexture() {
   canvas.height = 1024;
   const ctx = canvas.getContext('2d');
 
+  // Asfalto gris oscuro con textura de árido
   ctx.fillStyle = '#22252c';
   ctx.fillRect(0, 0, 1024, 1024);
 
@@ -104,8 +106,8 @@ function createAsphaltTexture() {
 
   // Huellas de neumático
   ctx.fillStyle = 'rgba(12, 14, 18, 0.45)';
-  ctx.fillRect(210, 0, 200, 1024);
-  ctx.fillRect(614, 0, 200, 1024);
+  ctx.fillRect(200, 0, 210, 1024);
+  ctx.fillRect(614, 0, 210, 1024);
 
   // Línea divisoria central amarilla discontinua
   ctx.fillStyle = '#f59e0b';
@@ -133,7 +135,7 @@ function createGrassTexture() {
   ctx.fillStyle = '#2d4d23';
   ctx.fillRect(0, 0, 512, 512);
 
-  for (let i = 0; i < 3500; i++) {
+  for (let i = 0; i < 4000; i++) {
     const x = Math.random() * 512;
     const y = Math.random() * 512;
     ctx.fillStyle = Math.random() < 0.5 ? '#3b612e' : '#233d1b';
@@ -147,7 +149,6 @@ function createGrassTexture() {
   return texture;
 }
 
-// Textura para carteles viales
 function createSignTexture(text, isYellow) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -189,7 +190,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.15;
 container.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -214,7 +215,7 @@ function toggleFullscreen() {
 }
 
 // ==========================================
-// 4. ILUMINACIÓN SOLAR
+// 4. ILUMINACIÓN SOLAR CINEMATOGRÁFICA
 // ==========================================
 
 const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x1e3a1e, 0.95);
@@ -228,7 +229,7 @@ sunLight.shadow.mapSize.height = 2048;
 scene.add(sunLight);
 
 // ==========================================
-// 5. PAISAJE NATURAL Y CORDILLERA
+// 5. PAISAJE NATURAL: PRADERA, CORDILLERA Y NUBES
 // ==========================================
 
 const groundMat = new THREE.MeshStandardMaterial({ map: createGrassTexture(), roughness: 0.9 });
@@ -238,6 +239,7 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = 0;
 scene.add(ground);
 
+// Cordillera alpina
 const mountainsGroup = new THREE.Group();
 const mtnGeo = new THREE.ConeGeometry(140, 260, 7);
 const mtnMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85, flatShading: true });
@@ -261,8 +263,25 @@ for (let i = 0; i < 30; i++) {
 }
 scene.add(mountainsGroup);
 
+// Nubes volumétricas 3D en el cielo
+const cloudGroup = new THREE.Group();
+const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, transparent: true, opacity: 0.85 });
+for (let i = 0; i < 24; i++) {
+  const c = new THREE.Group();
+  for (let j = 0; j < 5; j++) {
+    const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(25 + Math.random() * 20, 1), cloudMat);
+    puff.position.set((j - 2) * 22, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 18);
+    c.add(puff);
+  }
+  const dist = 600 + Math.random() * 600;
+  const ang = Math.random() * Math.PI * 2;
+  c.position.set(Math.cos(ang) * dist, 180 + Math.random() * 90, Math.sin(ang) * dist);
+  cloudGroup.add(c);
+}
+scene.add(cloudGroup);
+
 // ==========================================
-// 6. CARRETERA CONTINUA EN CINTA 3D
+// 6. CARRETERA CONTINUA EN CINTA 3D (SEAMLESS RIBBON)
 // ==========================================
 
 const RIBBON_POINTS = 140;
@@ -282,44 +301,79 @@ scene.add(roadMesh);
 const roadPosAttr = roadGeo.attributes.position;
 roadPosAttr.setUsage(THREE.DynamicDrawUsage);
 
+// Tachas reflectantes amarillas (Ojos de gato) en la línea central
+const catEyesGroup = new THREE.Group();
+const catEyeGeo = new THREE.BoxGeometry(0.18, 0.05, 0.18);
+const catEyeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.2, metalness: 0.8, emissive: 0xf59e0b, emissiveIntensity: 0.3 });
+const catEyes = [];
+for (let i = 0; i < 35; i++) {
+  const ce = new THREE.Mesh(catEyeGeo, catEyeMat);
+  catEyesGroup.add(ce);
+  catEyes.push({ mesh: ce, distOffset: i * 8 });
+}
+scene.add(catEyesGroup);
+
 // ==========================================
-// 7. PINOS Y CARTELERÍA VIAL 3D
+// 7. VEGETACIÓN REALISTA: PINOS, ÁRBOLES Y FLORES
 // ==========================================
 
-const pineGroup = new THREE.Group();
+const natureGroup = new THREE.Group();
 
-function createPine() {
+// Creador de pino de montaña
+function createDetailedPine() {
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.24, 0.34, 4, 7),
+    new THREE.CylinderGeometry(0.24, 0.36, 4.2, 8),
     new THREE.MeshStandardMaterial({ color: 0x3d2616, roughness: 0.9 })
   );
-  trunk.position.y = 2;
+  trunk.position.y = 2.1;
   g.add(trunk);
 
+  // 4 capas cónicas con hojas sombreadas
   const foliageMat = new THREE.MeshStandardMaterial({ color: 0x193b2a, roughness: 0.8, flatShading: true });
-  for (let i = 0; i < 3; i++) {
-    const f = new THREE.Mesh(new THREE.ConeGeometry(2.3 - i * 0.45, 3.2, 7), foliageMat);
-    f.position.y = 3.5 + i * 1.8;
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(new THREE.ConeGeometry(2.4 - i * 0.45, 3.0, 8), foliageMat);
+    f.position.y = 3.2 + i * 1.6;
     g.add(f);
   }
   return g;
 }
 
-const pines = [];
-for (let i = 0; i < 45; i++) {
-  const p = createPine();
-  const scale = 1.0 + Math.random() * 0.8;
-  p.scale.set(scale, scale, scale);
-  pineGroup.add(p);
-  pines.push({
-    mesh: p,
-    side: (i % 2 === 0 ? 1 : -1),
+// Creador de árbol frondoso de hoja caduca
+function createDeciduousTree() {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.40, 4.5, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 })
+  );
+  trunk.position.y = 2.25;
+  g.add(trunk);
+
+  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2e6b2e, roughness: 0.85, flatShading: true });
+  for (let i = 0; i < 4; i++) {
+    const sphere = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 + Math.random() * 0.8, 1), foliageMat);
+    sphere.position.set((Math.random() - 0.5) * 1.5, 4.0 + i * 1.1, (Math.random() - 0.5) * 1.5);
+    g.add(sphere);
+  }
+  return g;
+}
+
+const natureProps = [];
+for (let i = 0; i < 50; i++) {
+  const isPine = (i % 2 === 0);
+  const tree = isPine ? createDetailedPine() : createDeciduousTree();
+  const scale = 1.0 + Math.random() * 0.7;
+  tree.scale.set(scale, scale, scale);
+  natureGroup.add(tree);
+
+  natureProps.push({
+    mesh: tree,
+    side: (i % 4 < 2 ? 1 : -1),
     offsetLateral: 8.5 + Math.random() * 9,
-    distAhead: i * 18
+    distAhead: i * 16
   });
 }
-scene.add(pineGroup);
+scene.add(natureGroup);
 
 // Carteles viales reflectantes
 const signGroup = new THREE.Group();
@@ -398,12 +452,12 @@ function createDetailedVehicle(type, colorHex, laneOffset, initialRelDist) {
 }
 
 // ==========================================
-// 9. CABINA REALISTA CON TELEMETRÍA Y DETALLES
+// 9. CABINA REALISTA: TANQUE ESCULPIDO Y GUANTES
 // ==========================================
 
 const cockpitGroup = new THREE.Group();
 
-// A. Tanque Esculpido con Rodilleras
+// Tanque deportivo esculpido
 const tankGroup = new THREE.Group();
 const tankMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.75, roughness: 0.2 });
 const padMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.95 });
@@ -431,7 +485,7 @@ cap.position.set(0, -0.25, -0.25);
 tankGroup.add(cap);
 cockpitGroup.add(tankGroup);
 
-// B. Tija Superior y Manillar
+// Tija y Manillar
 const clampMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
 const clamp = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.08), clampMat);
 clamp.position.set(0, -0.20, -0.52);
@@ -453,7 +507,7 @@ const rightGrip = new THREE.Mesh(gripGeo, gripMat); rightGrip.position.set(0.36,
 cockpitGroup.add(leftGrip);
 cockpitGroup.add(rightGrip);
 
-// Manetas de freno y embrague
+// Manetas
 const leverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.15 });
 const leverGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.17, 10);
 leverGeo.rotateZ(Math.PI / 3);
@@ -462,13 +516,13 @@ const rightLever = new THREE.Mesh(leverGeo, leverMat); rightLever.rotation.y = M
 cockpitGroup.add(leftLever);
 cockpitGroup.add(rightLever);
 
-// Depósito transparente de líquido de freno delantero (Detalle hiperrealista)
+// Depósito transparente de líquido de freno delantero
 const reservoirMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.75, roughness: 0.1 });
 const reservoir = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.038, 12), reservoirMat);
 reservoir.position.set(0.26, -0.12, -0.55);
 cockpitGroup.add(reservoir);
 
-// C. Manos del Piloto con Guantes 3D
+// Manos del Piloto con Guantes 3D
 const gloveMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.6, metalness: 0.2 });
 const armorMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.3 });
 
@@ -494,7 +548,7 @@ function createHand(isLeft) {
 cockpitGroup.add(createHand(true));
 cockpitGroup.add(createHand(false));
 
-// D. Pantalla Digital TFT HD con Telemetría Completa y Shift Light
+// Pantalla Digital TFT HD
 const dashCanvas = document.createElement('canvas');
 dashCanvas.width = 1024;
 dashCanvas.height = 512;
@@ -514,7 +568,7 @@ camera.add(cockpitGroup);
 scene.add(camera);
 
 // ==========================================
-// 10. CONTROLES Y TECLADO
+// 10. CONTROLES Y TECLADO (CORREGIDOS Y NATURALES)
 // ==========================================
 
 const keys = { throttle: false, brake: false, steerLeft: false, steerRight: false };
@@ -522,7 +576,9 @@ const keys = { throttle: false, brake: false, steerLeft: false, steerRight: fals
 window.addEventListener('keydown', (e) => {
   if (['KeyW', 'ArrowUp'].includes(e.code)) keys.throttle = true;
   if (['KeyS', 'ArrowDown'].includes(e.code)) keys.brake = true;
+  // A / Flecha Izquierda = Dobla hacia la IZQUIERDA
   if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.steerLeft = true;
+  // D / Flecha Derecha = Dobla hacia la DERECHA
   if (['KeyD', 'ArrowRight'].includes(e.code)) keys.steerRight = true;
 
   if (e.code === 'KeyE') shiftUp();
@@ -618,7 +674,6 @@ function updateHandlingPhysics(dt) {
       simState.rpm = simState.idleRpm + (gearRatio * (simState.redlineRpm - simState.idleRpm));
       simState.fuelLiters = Math.max(0, simState.fuelLiters - (0.007 + (simState.rpm / simState.maxRpm) * 0.02) * dt);
       
-      // La suspensión se extiende levemente al acelerar
       simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, 0.03, 0.08);
     }
   } else {
@@ -638,51 +693,51 @@ function updateHandlingPhysics(dt) {
   // Freno Combinado
   if (keys.brake) {
     simState.speed = Math.max(0, simState.speed - 56 * dt);
-    // Hundimiento de horquilla por frenada
     simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, -0.055, 0.15);
     if (simState.speed > 55 && Math.random() < 0.06) {
       window.soundEngine.playTireScreech();
     }
   }
 
-  // Input de Manillar y Contramanillar
-  let targetSteer = 0;
-  if (keys.steerLeft) targetSteer -= 1;
-  if (keys.steerRight) targetSteer += 1;
+  // ========================================================
+  // FÍSICA DE MANEJO CORREGIDA (DIRECCIÓN TOTALMENTE NATURAL):
+  // - A / Izquierda: steerInput negativo -> laneOffset se desplaza a la IZQUIERDA (-)
+  // - D / Derecha: steerInput positivo -> laneOffset se desplaza a la DERECHA (+)
+  // ========================================================
+  let steer = 0;
+  if (keys.steerLeft) steer -= 1;
+  if (keys.steerRight) steer += 1;
 
-  const steerResponsiveness = (simState.speed > 120 ? 4.5 : (simState.speed > 50 ? 6.0 : 7.5));
-  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, targetSteer, steerResponsiveness * dt);
+  const steerSpeed = (simState.speed > 120 ? 5.0 : (simState.speed > 50 ? 6.5 : 8.0));
+  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, steerSpeed * dt);
 
-  // Inclinación por ángulo de giro (Lean Angle de 0 a 25 grados)
-  const maxLean = 0.44;
-  const targetLean = simState.steeringInput * maxLean;
-  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, targetLean, 6.5 * dt);
+  // Inclinación física de la moto: al doblar a la izquierda, la moto se inclina a la izquierda
+  const maxLean = 0.42; // ~24 grados
+  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, 6.5 * dt);
 
-  // La moto carva la curva por inclinación
-  const turnGrip = (simState.speed / 3.6);
-  simState.lateralVelocity = -Math.sin(simState.leanAngle) * turnGrip * 0.85;
-  simState.laneOffset += simState.lateralVelocity * dt;
+  // Desplazamiento lateral directo y suave según la velocidad
+  const turnRate = 5.6 * Math.min(1.4, (simState.speed + 15) / 75);
+  simState.laneOffset += simState.steeringInput * turnRate * dt;
   simState.laneOffset = Math.max(-4.8, Math.min(4.8, simState.laneOffset));
 
-  // Avance
+  // Avance del jugador
   simState.playerDistance += (simState.speed / 3.6) * dt;
 
   // Orientación en la posición del piloto
   const roadOri = getRoadOrientation(simState.playerDistance);
 
-  // Fuerza centrífuga lateral
-  simState.laneOffset += roadOri.curveRate * (simState.speed / 100) * 1.8 * dt;
+  // La inercia en curva empuja levemente hacia afuera si vas muy rápido
+  simState.laneOffset += roadOri.curveRate * (simState.speed / 100) * 1.6 * dt;
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.2);
 
   // Mirada hacia el ápice de la curva (Head tracking dinámico)
   const targetLook = -simState.steeringInput * 0.08;
   simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.0 * dt);
 
-  // Cámara alineada 100% con el sentido de avance
+  // Posición de la cámara en el carril
   const perpX = Math.cos(roadOri.yaw);
   const perpZ = Math.sin(roadOri.yaw);
 
-  // Vibración del viento y del motor a alta velocidad
   const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.008;
   const vib = (simState.rpm / simState.maxRpm) * 0.005 + (simState.onRumble ? 0.02 : 0) + speedWindBuffet;
 
@@ -690,21 +745,21 @@ function updateHandlingPhysics(dt) {
   camera.position.y = roadOri.y + 1.42 + (Math.random() - 0.5) * vib;
   camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
 
-  // Orientación de la cámara (Yaw alineado + Mirada al ápice + Suspensión + Peralte de curva)
+  // Orientación limpia y alineada de la cámara
   camera.rotation.set(0, 0, 0);
   camera.rotation.y = roadOri.yaw + simState.headLookApex;
   camera.rotation.x = roadOri.pitch + simState.pitchSuspension;
-  camera.rotation.z = simState.leanAngle * 0.75 + roadOri.roll;
+  camera.rotation.z = -simState.leanAngle * 0.72 + roadOri.roll;
 
-  // FOV dinámico con efecto túnel de velocidad
+  // FOV dinámico con efecto de velocidad
   camera.fov = 65 + (simState.speed / simState.maxSpeed) * 10;
   camera.updateProjectionMatrix();
 
-  // Giro físico leve del manillar en contramanillar
+  // Giro suave del manillar
   handlebar.rotation.y = -simState.steeringInput * 0.07;
 
-  // Actualizar Pinos
-  pines.forEach(p => {
+  // Actualizar Vegetación (Pinos y Árboles)
+  natureProps.forEach(p => {
     let pDist = simState.playerDistance + p.distAhead;
     const pt = getRoadPoint(pDist);
     const ori = getRoadOrientation(pDist);
@@ -716,7 +771,19 @@ function updateHandlingPhysics(dt) {
 
     p.distAhead -= ((simState.speed / 3.6) * dt);
     if (p.distAhead < -20) {
-      p.distAhead += (pines.length * 18);
+      p.distAhead += (natureProps.length * 16);
+    }
+  });
+
+  // Actualizar Tachas Reflectantes (Ojos de gato) en la línea amarilla
+  catEyes.forEach(ce => {
+    let cDist = simState.playerDistance + ce.distOffset;
+    const pt = getRoadPoint(cDist);
+    ce.mesh.position.set(pt.x, pt.y + 0.03, pt.z);
+
+    ce.distOffset -= ((simState.speed / 3.6) * dt);
+    if (ce.distOffset < -10) {
+      ce.distOffset += (catEyes.length * 8);
     }
   });
 
@@ -830,18 +897,17 @@ function updateContinuousRoadMesh() {
   roadPosAttr.needsUpdate = true;
 }
 
-// ACTUALIZACIÓN DEL TABLERO TFT CON SHIFT LIGHT Y TELEMETRÍA
+// ACTUALIZACIÓN DEL TABLERO TFT
 function updateTFT() {
   const c = dashCtx;
   c.fillStyle = '#030712';
   c.fillRect(0, 0, 1024, 512);
 
-  // Marco exterior
   c.strokeStyle = '#0284c7';
   c.lineWidth = 8;
   c.strokeRect(10, 10, 1004, 492);
 
-  // SHIFT LIGHT (Luces LED de corte de RPM en la parte superior)
+  // SHIFT LIGHT (Luces LED de corte)
   const isShiftWarning = simState.rpm >= 8200;
   for (let i = 0; i < 7; i++) {
     const lx = 260 + (i * 72);
@@ -849,7 +915,7 @@ function updateTFT() {
     if (simState.rpm > 6500 && i < 3) ledColor = '#f59e0b';
     if (simState.rpm > 7500 && i >= 3 && i < 5) ledColor = '#ef4444';
     if (isShiftWarning && i >= 5) {
-      ledColor = (performance.now() % 160 < 80) ? '#38bdf8' : '#ef4444'; // Parpadeo rápido
+      ledColor = (performance.now() % 160 < 80) ? '#38bdf8' : '#ef4444';
     }
     c.fillStyle = ledColor;
     c.beginPath();
@@ -857,7 +923,7 @@ function updateTFT() {
     c.fill();
   }
 
-  // Indicador de Giro / Flechas
+  // Indicador de Giro en el tablero (Corregido y sincronizado)
   if (keys.steerLeft && performance.now() % 500 < 250) {
     c.fillStyle = '#22c55e';
     c.font = '700 48px sans-serif';
