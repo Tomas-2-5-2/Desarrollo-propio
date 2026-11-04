@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MotoTravel Simulator: Aventura en Primera Persona</title>
+  <title>MotoTravel 3D: Simulador en Primera Persona (WebGL 3D Engine)</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="sim-container">
     
-    <!-- Ventana Principal del Simulador (Primera Persona) -->
+    <!-- Ventana Principal del Simulador (Motor 3D WebGL) -->
     <div id="viewport-wrapper">
-      <canvas id="simCanvas" width="960" height="600"></canvas>
+      <div id="webgl-container"></div>
 
-      <!-- Panel Digital / GPS Integrado en Pantalla -->
+      <!-- Pantalla de Navegación GPS (Esquina Superior Derecha) -->
       <div id="gps-display">
         <div class="gps-header">
           <span class="gps-status-dot"></span>
@@ -38,14 +38,14 @@
       <!-- Pantalla de Inicio / Configuración del Simulador -->
       <div id="start-modal" class="sim-overlay active">
         <div class="sim-card">
-          <div class="sim-tag">SIMULADOR EN PRIMERA PERSONA</div>
-          <h1>MOTO-TRAVEL PRO</h1>
-          <p class="tagline">Simulador de viajes en ruta, física de marchas y aventura</p>
+          <div class="sim-tag">MOTOR GRÁFICO 3D REAL (WEBGL)</div>
+          <h1>MOTO-TRAVEL 3D PRO</h1>
+          <p class="tagline">Simulador 3D inmersivo: Luces, sombras, física de 6 marchas y carretera continua</p>
 
           <div class="specs-grid">
             <div class="spec-box">
-              <span class="spec-title">MOTO</span>
-              <span class="spec-val">Trail Aventura 650cc</span>
+              <span class="spec-title">MOTOR</span>
+              <span class="spec-val">Trail 650cc 3D</span>
             </div>
             <div class="spec-box">
               <span class="spec-title">TRANSMISIÓN</span>
@@ -56,8 +56,8 @@
               <span class="spec-val">18 Litros</span>
             </div>
             <div class="spec-box">
-              <span class="spec-title">PESO CARGA</span>
-              <span class="spec-val">220 kg con alforjas</span>
+              <span class="spec-title">RENDER</span>
+              <span class="spec-val">WebGL 3D GPU</span>
             </div>
           </div>
 
@@ -66,16 +66,16 @@
             <div class="key-grid">
               <div><kbd>W</kbd> o <kbd>⬆️</kbd> Acelerador gradual</div>
               <div><kbd>S</kbd> o <kbd>⬇️</kbd> Freno combinado</div>
-              <div><kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> Inclinación / Manillar</div>
+              <div><kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> Inclinación / Girar moto</div>
               <div><kbd>E</kbd> Subir marcha (1ª ➔ 6ª)</div>
               <div><kbd>Q</kbd> Bajar marcha (6ª ➔ 1ª ➔ Neutro)</div>
-              <div><kbd>L</kbd> Faro delantero (Luces)</div>
+              <div><kbd>L</kbd> Faro delantero (SpotLight 3D)</div>
               <div><kbd>H</kbd> Bocina</div>
             </div>
           </div>
 
           <button id="btn-ignite" class="btn-ignite">
-            <span class="btn-icon">⚡</span> DAR CONTACTO Y ARRANCAR MOTO
+            <span class="btn-icon">⚡</span> ARRANCAR MOTOR 3D Y SALIR A LA RUTA
           </button>
         </div>
       </div>
@@ -100,13 +100,13 @@
         </div>
       </div>
 
-      <!-- Modal de Avería o Quedada sin nafta -->
+      <!-- Modal de Avería o Emergencia -->
       <div id="breakdown-modal" class="sim-overlay">
         <div class="sim-card breakdown-card">
           <div class="sim-tag danger">EMERGENCIA EN RUTA</div>
           <h2 id="breakdown-title">Motor Calado</h2>
           <p id="breakdown-desc">La moto se detuvo en la banquina.</p>
-          <button id="btn-respawn" class="btn-ignite">LLAMAR AL AUXILIO MECÁNICO</button>
+          <button id="btn-respawn" class="btn-ignite">VOLVER A INTENTAR</button>
         </div>
       </div>
 
@@ -114,11 +114,12 @@
 
     <!-- Barra de Estado Inferior -->
     <div id="telemetry-bar">
-      <span>⚙️ <b>MODO SIMULADOR:</b> Recuerda subir de marcha con <kbd>E</kbd> a las 5.500 RPM para no recalentar el motor ni gastar nafta de más.</span>
+      <span>⚙️ <b>MOTOR 3D REAL (WEBGL):</b> Iluminación dinámica, profundidad con niebla y física giroscópica. Sube de marcha con <kbd>E</kbd> y frena con <kbd>S</kbd>.</span>
     </div>
 
   </div>
 
+  <script src="js/three.min.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/adventure.js"></script>
   <script src="js/game.js"></script>

@@ -36,10 +36,16 @@ body {
   overflow: hidden;
 }
 
-#simCanvas {
-  display: block;
+#webgl-container {
   width: 960px;
   height: 600px;
+  display: block;
+}
+
+#webgl-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 /* Pantalla de Navegación GPS (Esquina Superior Derecha) */
