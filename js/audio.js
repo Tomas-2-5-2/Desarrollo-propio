@@ -1,4 +1,4 @@
-// Sintetizador de Audio Avanzado para Moto (Web Audio API)
+// Sintetizador de Audio Avanzado para Moto y Ambiente (Web Audio API)
 class MotoSimulatorAudio {
   constructor() {
     this.ctx = null;
@@ -7,6 +7,8 @@ class MotoSimulatorAudio {
     this.engineGain = null;
     this.windNoise = null;
     this.windGain = null;
+    this.rumbleOsc = null;
+    this.rumbleGain = null;
     this.isPlaying = false;
   }
 
@@ -25,23 +27,23 @@ class MotoSimulatorAudio {
     if (this.isPlaying) return;
 
     try {
-      // 1. Oscilador primario (cilindro / pistón)
+      // 1. Oscilador primario (cilindro / pistón de 650cc)
       this.engineOsc1 = this.ctx.createOscillator();
       this.engineOsc1.type = 'sawtooth';
-      this.engineOsc1.frequency.setValueAtTime(35, this.ctx.currentTime);
+      this.engineOsc1.frequency.setValueAtTime(32, this.ctx.currentTime);
 
-      // 2. Oscilador armónico (escape resonante)
+      // 2. Oscilador armónico (escape resonante bicilíndrico)
       this.engineOsc2 = this.ctx.createOscillator();
       this.engineOsc2.type = 'triangle';
-      this.engineOsc2.frequency.setValueAtTime(70, this.ctx.currentTime);
+      this.engineOsc2.frequency.setValueAtTime(64, this.ctx.currentTime);
 
-      // Filtro paso bajo para timbre metálico de escape
+      // Filtro paso bajo para timbre metálico y profundo de escape
       this.filter = this.ctx.createBiquadFilter();
       this.filter.type = 'lowpass';
-      this.filter.frequency.setValueAtTime(320, this.ctx.currentTime);
+      this.filter.frequency.setValueAtTime(300, this.ctx.currentTime);
 
       this.engineGain = this.ctx.createGain();
-      this.engineGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+      this.engineGain.gain.setValueAtTime(0.065, this.ctx.currentTime);
 
       this.engineOsc1.connect(this.filter);
       this.engineOsc2.connect(this.filter);
@@ -51,8 +53,11 @@ class MotoSimulatorAudio {
       this.engineOsc1.start();
       this.engineOsc2.start();
 
-      // 3. Ruido de viento aerodinámico a velocidad
+      // 3. Ruido de viento aerodinámico
       this.setupWindAudio();
+
+      // 4. Sonido de vibración al pisar banquina rugosa
+      this.setupRumbleAudio();
 
       this.isPlaying = true;
     } catch (e) {
@@ -66,7 +71,7 @@ class MotoSimulatorAudio {
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1; // Ruido blanco
+        data[i] = Math.random() * 2 - 1;
       }
 
       this.windNoise = this.ctx.createBufferSource();
@@ -75,7 +80,8 @@ class MotoSimulatorAudio {
 
       const windFilter = this.ctx.createBiquadFilter();
       windFilter.type = 'bandpass';
-      windFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
+      windFilter.frequency.setValueAtTime(420, this.ctx.currentTime);
+      windFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
 
       this.windGain = this.ctx.createGain();
       this.windGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
@@ -88,27 +94,78 @@ class MotoSimulatorAudio {
     } catch (e) {}
   }
 
-  update(rpm, maxRpm, speed, maxSpeed) {
+  setupRumbleAudio() {
+    try {
+      this.rumbleOsc = this.ctx.createOscillator();
+      this.rumbleOsc.type = 'square';
+      this.rumbleOsc.frequency.setValueAtTime(45, this.ctx.currentTime);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(160, this.ctx.currentTime);
+
+      this.rumbleGain = this.ctx.createGain();
+      this.rumbleGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+      this.rumbleOsc.connect(filter);
+      filter.connect(this.rumbleGain);
+      this.rumbleGain.connect(this.ctx.destination);
+
+      this.rumbleOsc.start();
+    } catch (e) {}
+  }
+
+  update(rpm, maxRpm, speed, maxSpeed, onRumble) {
     if (!this.isPlaying || !this.ctx) return;
 
-    // Frecuencia basada en RPM reales (de 1.100 a 10.000 RPM)
+    // Frecuencia basada en RPM reales
     const rpmRatio = Math.max(0, Math.min(1, rpm / maxRpm));
-    const baseFreq = 30 + (rpmRatio * 180);
+    const baseFreq = 28 + (rpmRatio * 170);
 
-    this.engineOsc1.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.05);
-    this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, this.ctx.currentTime, 0.05);
+    this.engineOsc1.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.04);
+    this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, this.ctx.currentTime, 0.04);
 
-    // Ajustar apertura de filtro de escape con aceleración
-    this.filter.frequency.setTargetAtTime(250 + (rpmRatio * 900), this.ctx.currentTime, 0.05);
+    this.filter.frequency.setTargetAtTime(240 + (rpmRatio * 950), this.ctx.currentTime, 0.04);
 
     // Viento por velocidad
     if (this.windGain) {
       const speedRatio = Math.min(1, speed / maxSpeed);
-      this.windGain.gain.setTargetAtTime(speedRatio * 0.08, this.ctx.currentTime, 0.1);
+      this.windGain.gain.setTargetAtTime(speedRatio * 0.09, this.ctx.currentTime, 0.1);
+    }
+
+    // Banquina rugosa (vibración sonora)
+    if (this.rumbleGain) {
+      const targetGain = (onRumble && speed > 15) ? 0.08 : 0.0;
+      this.rumbleGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+      if (onRumble) {
+        this.rumbleOsc.frequency.setTargetAtTime(30 + speed * 0.6, this.ctx.currentTime, 0.05);
+      }
     }
   }
 
-  // Sonido de cambio de marcha (clunk mecánico de transmisión)
+  // Sonido Doppler cuando te cruzas con un camión o auto
+  playPassWhoosh() {
+    this.init();
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.35);
+
+      gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, this.ctx.currentTime + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
   playGearShift() {
     this.init();
     try {
@@ -116,21 +173,20 @@ class MotoSimulatorAudio {
       const gain = this.ctx.createGain();
 
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(140, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.08);
+      osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(25, this.ctx.currentTime + 0.09);
 
-      gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.09);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
 
       osc.start();
-      osc.stop(this.ctx.currentTime + 0.08);
+      osc.stop(this.ctx.currentTime + 0.09);
     } catch (e) {}
   }
 
-  // Chirrido de frenada fuerte
   playTireScreech() {
     this.init();
     try {
@@ -138,17 +194,17 @@ class MotoSimulatorAudio {
       const gain = this.ctx.createGain();
 
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1800, this.ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(1200, this.ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(1600, this.ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(900, this.ctx.currentTime + 0.22);
 
-      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.22);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
 
       osc.start();
-      osc.stop(this.ctx.currentTime + 0.2);
+      osc.stop(this.ctx.currentTime + 0.22);
     } catch (e) {}
   }
 
@@ -161,11 +217,11 @@ class MotoSimulatorAudio {
 
       osc1.type = 'sawtooth';
       osc2.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(410, this.ctx.currentTime);
-      osc2.frequency.setValueAtTime(480, this.ctx.currentTime);
+      osc1.frequency.setValueAtTime(420, this.ctx.currentTime);
+      osc2.frequency.setValueAtTime(490, this.ctx.currentTime);
 
-      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.14, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
 
       osc1.connect(gain);
       osc2.connect(gain);
@@ -173,8 +229,8 @@ class MotoSimulatorAudio {
 
       osc1.start();
       osc2.start();
-      osc1.stop(this.ctx.currentTime + 0.3);
-      osc2.stop(this.ctx.currentTime + 0.3);
+      osc1.stop(this.ctx.currentTime + 0.35);
+      osc2.stop(this.ctx.currentTime + 0.35);
     } catch (e) {}
   }
 
@@ -184,6 +240,7 @@ class MotoSimulatorAudio {
       if (this.engineOsc1) this.engineOsc1.stop();
       if (this.engineOsc2) this.engineOsc2.stop();
       if (this.windNoise) this.windNoise.stop();
+      if (this.rumbleOsc) this.rumbleOsc.stop();
       this.isPlaying = false;
     } catch (e) {}
   }
