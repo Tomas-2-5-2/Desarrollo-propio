@@ -1,4 +1,4 @@
-// Motor Gráfico 3D Ultra: Física Realista de Moto, Trazada Perfecta y Cabina Ergonómica
+// Motor Gráfico 3D Ultra Pro: Física G-Force, Trazada con Mirada al Ápice, Cartelería Vial y Telemetría TFT
 
 const container = document.getElementById('webgl-container');
 const btnFullscreen = document.getElementById('btn-fullscreen');
@@ -36,13 +36,14 @@ const simState = {
   bikeHealth: 100,
   money: 180,
   
-  // Dinámica de Conducción Realista (Física de Moto)
-  playerDistance: 0,  // Metros recorridos a lo largo de la ruta
-  laneOffset: 1.5,    // Desplazamiento lateral (-4.2 izq a +4.2 der)
-  lateralVelocity: 0, // Velocidad lateral al doblar
-  leanAngle: 0,       // Inclinación real del chasis (radianes)
-  steeringInput: 0,   // Input suave de dirección (-1 a 1)
-  pitchSuspension: 0, // Hundimiento de horquilla por frenado / aceleración
+  // Dinámica de Conducción y Fuerzas G
+  playerDistance: 0,  // Metros recorridos
+  laneOffset: 1.5,    // Desplazamiento lateral (-4.2 a +4.2)
+  lateralVelocity: 0, // m/s
+  leanAngle: 0,       // Inclinación chasis (rad)
+  steeringInput: 0,   // Input suavizado
+  pitchSuspension: 0, // Inmersión de horquilla delantera
+  headLookApex: 0,    // Mirada del piloto hacia el ápice de la curva
   
   targetDistanceKm: 16.0,
   odometer: 0,
@@ -53,37 +54,33 @@ const simState = {
 };
 
 // ==========================================
-// 1. TRAYECTORIA PRECISA DE LA CARRETERA 3D
+// 1. TRAYECTORIA Y GEOMETRÍA DE LA RUTA 3D
 // ==========================================
 
 function getRoadPoint(dist) {
-  // Curvas de montaña armoniosas y progresivas
   const x = Math.sin(dist * 0.007) * 26 + Math.cos(dist * 0.003) * 14;
   const y = Math.sin(dist * 0.005) * 2.8 + Math.cos(dist * 0.01) * 1.2 + 0.1;
   const z = -dist;
   return { x, y, z };
 }
 
-// Retorna orientación y vector tangente 100% alineados con el sentido de avance
 function getRoadOrientation(dist) {
   const p0 = getRoadPoint(dist);
   const p1 = getRoadPoint(dist + 2.0);
 
   const dx = p1.x - p0.x;
   const dy = p1.y - p0.y;
-  const dz = -(p1.z - p0.z); // Distancia positiva hacia adelante
+  const dz = -(p1.z - p0.z);
 
-  // Ángulo de rumbo correcto en Three.js (mirando hacia -Z):
-  // Si dx > 0 (curva a la derecha), yaw debe ser negativo para que la cámara gire a la derecha
   const yaw = -Math.atan2(dx, dz);
   const pitch = -Math.atan2(dy, dz);
-  const roll = (dx / dz) * 0.45; // Peralte bancado de la curva
+  const roll = (dx / dz) * 0.42;
 
   return { x: p0.x, y: p0.y, z: p0.z, yaw, pitch, roll, curveRate: dx / dz };
 }
 
 // ==========================================
-// 2. GENERADORES DE TEXTURAS PROCEDURALES PBR
+// 2. TEXTURAS PROCEDURALES PBR
 // ==========================================
 
 function createAsphaltTexture() {
@@ -105,7 +102,7 @@ function createAsphaltTexture() {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // Huellas de desgaste
+  // Huellas de neumático
   ctx.fillStyle = 'rgba(12, 14, 18, 0.45)';
   ctx.fillRect(210, 0, 200, 1024);
   ctx.fillRect(614, 0, 200, 1024);
@@ -148,6 +145,29 @@ function createGrassTexture() {
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(60, 60);
   return texture;
+}
+
+// Textura para carteles viales
+function createSignTexture(text, isYellow) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = isYellow ? '#f59e0b' : '#f8fafc';
+  ctx.fillRect(0, 0, 256, 256);
+
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(10, 10, 236, 236);
+
+  ctx.fillStyle = '#09090b';
+  ctx.font = '700 80px "Chakra Petch", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 128);
+
+  return new THREE.CanvasTexture(canvas);
 }
 
 // ==========================================
@@ -208,7 +228,7 @@ sunLight.shadow.mapSize.height = 2048;
 scene.add(sunLight);
 
 // ==========================================
-// 5. PAISAJE NATURAL: PRADERA Y CORDILLERA
+// 5. PAISAJE NATURAL Y CORDILLERA
 // ==========================================
 
 const groundMat = new THREE.MeshStandardMaterial({ map: createGrassTexture(), roughness: 0.9 });
@@ -218,7 +238,6 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = 0;
 scene.add(ground);
 
-// Cordillera alpina
 const mountainsGroup = new THREE.Group();
 const mtnGeo = new THREE.ConeGeometry(140, 260, 7);
 const mtnMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85, flatShading: true });
@@ -243,11 +262,11 @@ for (let i = 0; i < 30; i++) {
 scene.add(mountainsGroup);
 
 // ==========================================
-// 6. CARRETERA CONTINUA EN CINTA 3D (SEAMLESS RIBBON)
+// 6. CARRETERA CONTINUA EN CINTA 3D
 // ==========================================
 
 const RIBBON_POINTS = 140;
-const POINT_STEP = 3.2; // Metros entre muestras
+const POINT_STEP = 3.2;
 const ROAD_WIDTH = 11.2;
 
 const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
@@ -264,7 +283,7 @@ const roadPosAttr = roadGeo.attributes.position;
 roadPosAttr.setUsage(THREE.DynamicDrawUsage);
 
 // ==========================================
-// 7. PINOS Y VEGETACIÓN NATURAL A LOS COSTADOS
+// 7. PINOS Y CARTELERÍA VIAL 3D
 // ==========================================
 
 const pineGroup = new THREE.Group();
@@ -302,8 +321,37 @@ for (let i = 0; i < 45; i++) {
 }
 scene.add(pineGroup);
 
+// Carteles viales reflectantes
+const signGroup = new THREE.Group();
+const signPoleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
+const signBoardGeo = new THREE.BoxGeometry(1.2, 1.2, 0.05);
+
+const signs = [
+  { text: '⚠️', isYellow: true, distAhead: 60, side: 1 },
+  { text: '80', isYellow: false, distAhead: 150, side: 1 },
+  { text: '⮞⮞', isYellow: true, distAhead: 240, side: 1 },
+  { text: '⚠️', isYellow: true, distAhead: 340, side: 1 }
+];
+
+const roadSigns = [];
+signs.forEach(s => {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8, 8), signPoleMat);
+  pole.position.y = 1.4;
+  g.add(pole);
+
+  const boardMat = new THREE.MeshBasicMaterial({ map: createSignTexture(s.text, s.isYellow) });
+  const board = new THREE.Mesh(signBoardGeo, boardMat);
+  board.position.y = 2.4;
+  g.add(board);
+
+  signGroup.add(g);
+  roadSigns.push({ mesh: g, distAhead: s.distAhead, side: s.side });
+});
+scene.add(signGroup);
+
 // ==========================================
-// 8. TRÁFICO DINÁMICO EN LA RUTA
+// 8. TRÁFICO 3D (AUTOS Y CAMIONES)
 // ==========================================
 
 const trafficGroup = new THREE.Group();
@@ -350,23 +398,21 @@ function createDetailedVehicle(type, colorHex, laneOffset, initialRelDist) {
 }
 
 // ==========================================
-// 9. CABINA REALISTA Y ERGONÓMICA DE LA MOTO
+// 9. CABINA REALISTA CON TELEMETRÍA Y DETALLES
 // ==========================================
 
 const cockpitGroup = new THREE.Group();
 
-// A. Tanque de Combustible Esculpido (Aerodinámico)
+// A. Tanque Esculpido con Rodilleras
 const tankGroup = new THREE.Group();
-const tankMat = new THREE.MeshStandardMaterial({ color: 0xc53030, metalness: 0.7, roughness: 0.25 });
-const padMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.95 });
+const tankMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.75, roughness: 0.2 });
+const padMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.95 });
 
-// Cuerpo central del tanque
 const tankCenter = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.22, 0.70), tankMat);
 tankCenter.position.set(0, -0.38, -0.28);
 tankCenter.rotation.x = Math.PI / 10;
 tankGroup.add(tankCenter);
 
-// Laterales con rodilleras de goma (Knee pads)
 const padLeft = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.42), padMat);
 padLeft.position.set(-0.13, -0.36, -0.26);
 padLeft.rotation.x = Math.PI / 10;
@@ -377,7 +423,6 @@ padRight.position.set(0.13, -0.36, -0.26);
 padRight.rotation.x = Math.PI / 10;
 tankGroup.add(padRight);
 
-// Tapa de nafta cromada
 const cap = new THREE.Mesh(
   new THREE.CylinderGeometry(0.04, 0.04, 0.012, 16),
   new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.1 })
@@ -386,13 +431,12 @@ cap.position.set(0, -0.25, -0.25);
 tankGroup.add(cap);
 cockpitGroup.add(tankGroup);
 
-// B. Tija Superior (Triple Clamp de Aluminio)
+// B. Tija Superior y Manillar
 const clampMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
 const clamp = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.08), clampMat);
 clamp.position.set(0, -0.20, -0.52);
 cockpitGroup.add(clamp);
 
-// C. Manillar Ergonómico (Curvado levemente hacia el piloto)
 const barMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.25 });
 const barGeo = new THREE.CylinderGeometry(0.020, 0.020, 0.92, 16);
 barGeo.rotateZ(Math.PI / 2);
@@ -400,7 +444,7 @@ const handlebar = new THREE.Mesh(barGeo, barMat);
 handlebar.position.set(0, -0.18, -0.54);
 cockpitGroup.add(handlebar);
 
-// Puños de goma vulcanizada
+// Puños
 const gripMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.95 });
 const gripGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.15, 14);
 gripGeo.rotateZ(Math.PI / 2);
@@ -418,7 +462,13 @@ const rightLever = new THREE.Mesh(leverGeo, leverMat); rightLever.rotation.y = M
 cockpitGroup.add(leftLever);
 cockpitGroup.add(rightLever);
 
-// D. Manos del Piloto con Guantes 3D
+// Depósito transparente de líquido de freno delantero (Detalle hiperrealista)
+const reservoirMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.75, roughness: 0.1 });
+const reservoir = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.038, 12), reservoirMat);
+reservoir.position.set(0.26, -0.12, -0.55);
+cockpitGroup.add(reservoir);
+
+// C. Manos del Piloto con Guantes 3D
 const gloveMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.6, metalness: 0.2 });
 const armorMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.3 });
 
@@ -444,7 +494,7 @@ function createHand(isLeft) {
 cockpitGroup.add(createHand(true));
 cockpitGroup.add(createHand(false));
 
-// E. Pantalla Digital TFT HD
+// D. Pantalla Digital TFT HD con Telemetría Completa y Shift Light
 const dashCanvas = document.createElement('canvas');
 dashCanvas.width = 1024;
 dashCanvas.height = 512;
@@ -568,7 +618,7 @@ function updateHandlingPhysics(dt) {
       simState.rpm = simState.idleRpm + (gearRatio * (simState.redlineRpm - simState.idleRpm));
       simState.fuelLiters = Math.max(0, simState.fuelLiters - (0.007 + (simState.rpm / simState.maxRpm) * 0.02) * dt);
       
-      // La horquilla se estira levemente al acelerar
+      // La suspensión se extiende levemente al acelerar
       simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, 0.03, 0.08);
     }
   } else {
@@ -588,62 +638,70 @@ function updateHandlingPhysics(dt) {
   // Freno Combinado
   if (keys.brake) {
     simState.speed = Math.max(0, simState.speed - 56 * dt);
-    // Hundimiento de horquilla por frenada fuerte
+    // Hundimiento de horquilla por frenada
     simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, -0.055, 0.15);
     if (simState.speed > 55 && Math.random() < 0.06) {
       window.soundEngine.playTireScreech();
     }
   }
 
-  // FÍSICA DE MANEJO REAL (CONTRAMANILLAR E INCLINACIÓN)
+  // Input de Manillar y Contramanillar
   let targetSteer = 0;
   if (keys.steerLeft) targetSteer -= 1;
   if (keys.steerRight) targetSteer += 1;
 
-  // Suavizado del input del manillar (estabilidad giroscópica a alta velocidad)
   const steerResponsiveness = (simState.speed > 120 ? 4.5 : (simState.speed > 50 ? 6.0 : 7.5));
   simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, targetSteer, steerResponsiveness * dt);
 
-  // Inclinación física de la moto proporcional al giro y velocidad
-  const maxLean = 0.44; // ~25 grados de inclinación
+  // Inclinación por ángulo de giro (Lean Angle de 0 a 25 grados)
+  const maxLean = 0.44;
   const targetLean = simState.steeringInput * maxLean;
   simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, targetLean, 6.5 * dt);
 
-  // La moto dobla por la inclinación: velocidad lateral resultante
-  const turnGrip = (simState.speed / 3.6); // Metros/s
+  // La moto carva la curva por inclinación
+  const turnGrip = (simState.speed / 3.6);
   simState.lateralVelocity = -Math.sin(simState.leanAngle) * turnGrip * 0.85;
   simState.laneOffset += simState.lateralVelocity * dt;
   simState.laneOffset = Math.max(-4.8, Math.min(4.8, simState.laneOffset));
 
-  // Avance a lo largo de la ruta
+  // Avance
   simState.playerDistance += (simState.speed / 3.6) * dt;
 
-  // Orientación del camino en la posición del piloto
+  // Orientación en la posición del piloto
   const roadOri = getRoadOrientation(simState.playerDistance);
 
-  // La fuerza centrífuga de la curva empuja hacia el exterior si no inclinas
+  // Fuerza centrífuga lateral
   simState.laneOffset += roadOri.curveRate * (simState.speed / 100) * 1.8 * dt;
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.2);
 
-  // CÁMARA Y COCKPIT: ALINEACIÓN 100% DIRECTA CON LA RUTA (SIN IR DE COSTADO)
-  // Calculamos la posición del piloto en el carril
-  // Vector perpendicular a la dirección de la ruta
+  // Mirada hacia el ápice de la curva (Head tracking dinámico)
+  const targetLook = -simState.steeringInput * 0.08;
+  simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.0 * dt);
+
+  // Cámara alineada 100% con el sentido de avance
   const perpX = Math.cos(roadOri.yaw);
   const perpZ = Math.sin(roadOri.yaw);
 
-  const vib = (simState.rpm / simState.maxRpm) * 0.005 + (simState.onRumble ? 0.02 : 0);
+  // Vibración del viento y del motor a alta velocidad
+  const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.008;
+  const vib = (simState.rpm / simState.maxRpm) * 0.005 + (simState.onRumble ? 0.02 : 0) + speedWindBuffet;
+
   camera.position.x = roadOri.x + (perpX * simState.laneOffset) + (Math.random() - 0.5) * vib;
   camera.position.y = roadOri.y + 1.42 + (Math.random() - 0.5) * vib;
   camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
 
-  // La cámara apunta de forma fluida hacia la carretera adelante
+  // Orientación de la cámara (Yaw alineado + Mirada al ápice + Suspensión + Peralte de curva)
   camera.rotation.set(0, 0, 0);
-  camera.rotation.y = roadOri.yaw + (simState.steeringInput * 0.06); // Gira la vista hacia el interior de la curva
-  camera.rotation.x = roadOri.pitch + simState.pitchSuspension;      // Sube/baja con el relieve y la suspensión
-  camera.rotation.z = simState.leanAngle * 0.75 + roadOri.roll;     // Inclinación en curva con peralte
+  camera.rotation.y = roadOri.yaw + simState.headLookApex;
+  camera.rotation.x = roadOri.pitch + simState.pitchSuspension;
+  camera.rotation.z = simState.leanAngle * 0.75 + roadOri.roll;
 
-  // Dinámica del manillar (gira levemente con el contramanillar)
-  handlebar.rotation.y = -simState.steeringInput * 0.08;
+  // FOV dinámico con efecto túnel de velocidad
+  camera.fov = 65 + (simState.speed / simState.maxSpeed) * 10;
+  camera.updateProjectionMatrix();
+
+  // Giro físico leve del manillar en contramanillar
+  handlebar.rotation.y = -simState.steeringInput * 0.07;
 
   // Actualizar Pinos
   pines.forEach(p => {
@@ -659,6 +717,24 @@ function updateHandlingPhysics(dt) {
     p.distAhead -= ((simState.speed / 3.6) * dt);
     if (p.distAhead < -20) {
       p.distAhead += (pines.length * 18);
+    }
+  });
+
+  // Actualizar Carteles Viales
+  roadSigns.forEach(s => {
+    let sDist = simState.playerDistance + s.distAhead;
+    const pt = getRoadPoint(sDist);
+    const ori = getRoadOrientation(sDist);
+
+    const sx = Math.cos(ori.yaw) * (s.side * 7.5);
+    const sz = Math.sin(ori.yaw) * (s.side * 7.5);
+
+    s.mesh.position.set(pt.x + sx, pt.y, pt.z + sz);
+    s.mesh.rotation.y = ori.yaw;
+
+    s.distAhead -= ((simState.speed / 3.6) * dt);
+    if (s.distAhead < -20) {
+      s.distAhead += 400;
     }
   });
 
@@ -727,7 +803,7 @@ function updateHandlingPhysics(dt) {
   updateGps();
 }
 
-// ACTUALIZACIÓN CONTINUA DEL ASFALTO DE LA RUTA
+// ACTUALIZACIÓN DE LA MALLA CONTINUA DE ASFALTO
 function updateContinuousRoadMesh() {
   const positions = roadPosAttr.array;
   const halfW = ROAD_WIDTH / 2;
@@ -740,13 +816,11 @@ function updateContinuousRoadMesh() {
     const nx = Math.cos(ori.yaw);
     const nz = Math.sin(ori.yaw);
 
-    // Vértice izquierdo
     const idxL = i * 2 * 3;
     positions[idxL]     = p.x - (nx * halfW);
     positions[idxL + 1] = p.y + 0.03;
     positions[idxL + 2] = p.z - (nz * halfW);
 
-    // Vértice derecho
     const idxR = (i * 2 + 1) * 3;
     positions[idxR]     = p.x + (nx * halfW);
     positions[idxR + 1] = p.y + 0.03;
@@ -756,15 +830,46 @@ function updateContinuousRoadMesh() {
   roadPosAttr.needsUpdate = true;
 }
 
+// ACTUALIZACIÓN DEL TABLERO TFT CON SHIFT LIGHT Y TELEMETRÍA
 function updateTFT() {
   const c = dashCtx;
   c.fillStyle = '#030712';
   c.fillRect(0, 0, 1024, 512);
 
+  // Marco exterior
   c.strokeStyle = '#0284c7';
   c.lineWidth = 8;
   c.strokeRect(10, 10, 1004, 492);
 
+  // SHIFT LIGHT (Luces LED de corte de RPM en la parte superior)
+  const isShiftWarning = simState.rpm >= 8200;
+  for (let i = 0; i < 7; i++) {
+    const lx = 260 + (i * 72);
+    let ledColor = '#1e293b';
+    if (simState.rpm > 6500 && i < 3) ledColor = '#f59e0b';
+    if (simState.rpm > 7500 && i >= 3 && i < 5) ledColor = '#ef4444';
+    if (isShiftWarning && i >= 5) {
+      ledColor = (performance.now() % 160 < 80) ? '#38bdf8' : '#ef4444'; // Parpadeo rápido
+    }
+    c.fillStyle = ledColor;
+    c.beginPath();
+    c.roundRect(lx, 30, 52, 16, 4);
+    c.fill();
+  }
+
+  // Indicador de Giro / Flechas
+  if (keys.steerLeft && performance.now() % 500 < 250) {
+    c.fillStyle = '#22c55e';
+    c.font = '700 48px sans-serif';
+    c.fillText('◀', 100, 60);
+  }
+  if (keys.steerRight && performance.now() % 500 < 250) {
+    c.fillStyle = '#22c55e';
+    c.font = '700 48px sans-serif';
+    c.fillText('▶', 920, 60);
+  }
+
+  // Marcha grande
   c.fillStyle = simState.gear === 0 ? '#22c55e' : '#38bdf8';
   c.font = '700 160px "Chakra Petch", monospace';
   c.textAlign = 'center';
@@ -774,6 +879,7 @@ function updateTFT() {
   c.fillStyle = '#64748b';
   c.fillText('MARCHA', 200, 310);
 
+  // Velocímetro digital
   c.fillStyle = '#ffffff';
   c.font = '700 210px "Share Tech Mono", monospace';
   c.fillText(Math.round(simState.speed).toString().padStart(3, ' '), 560, 260);
@@ -781,18 +887,20 @@ function updateTFT() {
   c.fillStyle = '#38bdf8';
   c.fillText('KM / H', 560, 330);
 
+  // Barra de Tacómetro RPM
   const rpmRatio = Math.min(1, simState.rpm / simState.maxRpm);
   c.fillStyle = '#1e293b';
   c.fillRect(80, 400, 864, 45);
   c.fillStyle = simState.rpm >= simState.redlineRpm ? '#ef4444' : '#38bdf8';
   c.fillRect(80, 400, 864 * rpmRatio, 45);
 
+  // Métricas
   c.font = '40px "Share Tech Mono"';
   c.textAlign = 'right';
   c.fillStyle = simState.fuelLiters < 4 ? '#ef4444' : '#cbd5e1';
-  c.fillText(`FUEL: ${simState.fuelLiters.toFixed(1)}L`, 960, 100);
+  c.fillText(`FUEL: ${simState.fuelLiters.toFixed(1)}L`, 960, 115);
   c.fillStyle = simState.engineTemp > 105 ? '#ef4444' : '#cbd5e1';
-  c.fillText(`TEMP: ${Math.round(simState.engineTemp)}°C`, 960, 165);
+  c.fillText(`TEMP: ${Math.round(simState.engineTemp)}°C`, 960, 175);
 
   dashTexture.needsUpdate = true;
 }
