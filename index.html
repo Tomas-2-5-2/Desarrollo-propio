@@ -3,118 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MotoTravel 3D: Simulador en Primera Persona (WebGL 3D Engine)</title>
+  <title>MotoTravel 3D: Ultra Simulator</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="sim-container">
+  <div id="sim-viewport">
     
-    <!-- Ventana Principal del Simulador (Motor 3D WebGL) -->
-    <div id="viewport-wrapper">
-      <div id="webgl-container"></div>
+    <!-- Contenedor WebGL Pantalla Completa -->
+    <div id="webgl-container"></div>
 
-      <!-- Pantalla de Navegación GPS (Esquina Superior Derecha) -->
-      <div id="gps-display">
-        <div class="gps-header">
-          <span class="gps-status-dot"></span>
-          <span id="gps-route-name">RUTA 40 // TRAMO SUR</span>
-        </div>
-        <div class="gps-body">
-          <div class="gps-metric">
-            <span class="label">PRÓXIMA PARADA</span>
-            <span id="gps-target" class="val">Estación Los Pinos</span>
-          </div>
-          <div class="gps-metric">
-            <span class="label">DISTANCIA</span>
-            <span id="gps-dist" class="val">15.0 km</span>
-          </div>
-          <div class="gps-metric">
-            <span class="label">TIEMPO ESTIMADO</span>
-            <span id="gps-eta" class="val">11 min</span>
-          </div>
-        </div>
+    <!-- HUD Flotante Estilo Simulador de Alta Gama -->
+    <div id="hud-top-bar">
+      <div class="hud-pill route-pill">
+        <span class="live-dot"></span>
+        <span id="gps-route-name">RUTA 40 // TRAMO SUR</span>
       </div>
-
-      <!-- Pantalla de Inicio / Configuración del Simulador -->
-      <div id="start-modal" class="sim-overlay active">
-        <div class="sim-card">
-          <div class="sim-tag">MOTOR GRÁFICO 3D REAL (WEBGL)</div>
-          <h1>MOTO-TRAVEL 3D PRO</h1>
-          <p class="tagline">Simulador 3D inmersivo: Luces, sombras, física de 6 marchas y carretera continua</p>
-
-          <div class="specs-grid">
-            <div class="spec-box">
-              <span class="spec-title">MOTOR</span>
-              <span class="spec-val">Trail 650cc 3D</span>
-            </div>
-            <div class="spec-box">
-              <span class="spec-title">TRANSMISIÓN</span>
-              <span class="spec-val">6 Marchas (Manual)</span>
-            </div>
-            <div class="spec-box">
-              <span class="spec-title">DEPÓSITO</span>
-              <span class="spec-val">18 Litros</span>
-            </div>
-            <div class="spec-box">
-              <span class="spec-title">RENDER</span>
-              <span class="spec-val">WebGL 3D GPU</span>
-            </div>
-          </div>
-
-          <div class="sim-instructions">
-            <h3>MANDOS DEL PILOTO:</h3>
-            <div class="key-grid">
-              <div><kbd>W</kbd> o <kbd>⬆️</kbd> Acelerador gradual</div>
-              <div><kbd>S</kbd> o <kbd>⬇️</kbd> Freno combinado</div>
-              <div><kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> Inclinación / Girar moto</div>
-              <div><kbd>E</kbd> Subir marcha (1ª ➔ 6ª)</div>
-              <div><kbd>Q</kbd> Bajar marcha (6ª ➔ 1ª ➔ Neutro)</div>
-              <div><kbd>L</kbd> Faro delantero (SpotLight 3D)</div>
-              <div><kbd>H</kbd> Bocina</div>
-            </div>
-          </div>
-
-          <button id="btn-ignite" class="btn-ignite">
-            <span class="btn-icon">⚡</span> ARRANCAR MOTOR 3D Y SALIR A LA RUTA
-          </button>
-        </div>
+      <div class="hud-pill nav-pill">
+        <span class="hud-mini-label">PRÓXIMA PARADA:</span>
+        <span id="gps-target" class="hud-highlight">Estación Los Pinos</span>
+        <span class="hud-divider">|</span>
+        <span id="gps-dist" class="hud-highlight">15.0 km</span>
+        <span class="hud-divider">|</span>
+        <span id="gps-eta" class="hud-dim">ETA 11 min</span>
       </div>
-
-      <!-- Modal de Taller / Parada de Ruta -->
-      <div id="service-modal" class="sim-overlay">
-        <div class="sim-card service-card">
-          <div class="sim-tag">PUNTO DE ASISTENCIA EN RUTA</div>
-          <h2 id="service-name">Parador 'El Cóndor' - Km 184</h2>
-          <div class="service-stats">
-            <div>Combustible actual: <b id="srv-fuel">12 L</b></div>
-            <div>Temp. Motor: <b id="srv-temp">88°C</b></div>
-            <div>Presión neumáticos: <b id="srv-tires">32 PSI</b></div>
-            <div>Efectivo: <b id="srv-money">$180</b></div>
-          </div>
-          <p id="service-narrative" class="service-text">
-            Detienes la moto al borde de la calzada. El motor burbujea al ralentí mientras el calor sube por el tanque.
-          </p>
-          <div id="service-actions" class="service-buttons">
-            <!-- Botones dinámicos -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal de Avería o Emergencia -->
-      <div id="breakdown-modal" class="sim-overlay">
-        <div class="sim-card breakdown-card">
-          <div class="sim-tag danger">EMERGENCIA EN RUTA</div>
-          <h2 id="breakdown-title">Motor Calado</h2>
-          <p id="breakdown-desc">La moto se detuvo en la banquina.</p>
-          <button id="btn-respawn" class="btn-ignite">VOLVER A INTENTAR</button>
-        </div>
-      </div>
-
+      <button id="btn-fullscreen" class="hud-pill btn-pill" title="Pantalla Completa">⛶ PANTALLA COMPLETA</button>
     </div>
 
-    <!-- Barra de Estado Inferior -->
-    <div id="telemetry-bar">
-      <span>⚙️ <b>MOTOR 3D REAL (WEBGL):</b> Iluminación dinámica, profundidad con niebla y física giroscópica. Sube de marcha con <kbd>E</kbd> y frena con <kbd>S</kbd>.</span>
+    <!-- Pantalla de Inicio / Configuración -->
+    <div id="start-modal" class="sim-overlay active">
+      <div class="sim-card">
+        <div class="sim-tag">SIMULADOR 3D DE ALTA FIDELIDAD</div>
+        <h1>MOTO-TRAVEL ULTRA 3D</h1>
+        <p class="tagline">Gráficos de alta definición, texturas PBR, cabina inmersiva y física de ruta</p>
+
+        <div class="specs-grid">
+          <div class="spec-box">
+            <span class="spec-title">MOTO</span>
+            <span class="spec-val">Trail 650cc Rally</span>
+          </div>
+          <div class="spec-box">
+            <span class="spec-title">TRANSMISIÓN</span>
+            <span class="spec-val">6 Velocidades</span>
+          </div>
+          <div class="spec-box">
+            <span class="spec-title">CABINA</span>
+            <span class="spec-val">Piloto + Manos 3D</span>
+          </div>
+          <div class="spec-box">
+            <span class="spec-title">MOTOR GRÁFICO</span>
+            <span class="spec-val">WebGL PBR 60FPS</span>
+          </div>
+        </div>
+
+        <div class="sim-instructions">
+          <h3>MANDOS DE SIMULACIÓN:</h3>
+          <div class="key-grid">
+            <div><kbd>W</kbd> o <kbd>⬆️</kbd> Acelerador gradual</div>
+            <div><kbd>S</kbd> o <kbd>⬇️</kbd> Freno combinado</div>
+            <div><kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> Contramanillar / Inclinación</div>
+            <div><kbd>E</kbd> Subir marcha (1ª ➔ 6ª)</div>
+            <div><kbd>Q</kbd> Bajar marcha (6ª ➔ 1ª ➔ Neutro)</div>
+            <div><kbd>L</kbd> Faros de luz alta (SpotLight 3D)</div>
+            <div><kbd>F</kbd> Modo Pantalla Completa</div>
+            <div><kbd>H</kbd> Bocina</div>
+          </div>
+        </div>
+
+        <button id="btn-ignite" class="btn-ignite">
+          <span class="btn-icon">⚡</span> ARRANCAR MOTOR Y ENTRAR A LA RUTA
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal de Taller / Parada de Ruta -->
+    <div id="service-modal" class="sim-overlay">
+      <div class="sim-card service-card">
+        <div class="sim-tag">PARADOR Y ASISTENCIA EN RUTA</div>
+        <h2 id="service-name">Parador 'El Cóndor' - Km 184</h2>
+        <div class="service-stats">
+          <div>Combustible: <b id="srv-fuel">12.0 L</b></div>
+          <div>Temp. Motor: <b id="srv-temp">88°C</b></div>
+          <div>Presión neumáticos: <b id="srv-tires">32 PSI</b></div>
+          <div>Billetera: <b id="srv-money">$180</b></div>
+        </div>
+        <p id="service-narrative" class="service-text">
+          Apagas el motor al costado del parador. El calor sube del bloque del motor mientras disfrutas de la inmensidad del paisaje.
+        </p>
+        <div id="service-actions" class="service-buttons">
+          <!-- Botones dinámicos -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Avería o Emergencia -->
+    <div id="breakdown-modal" class="sim-overlay">
+      <div class="sim-card breakdown-card">
+        <div class="sim-tag danger">EMERGENCIA EN RUTA</div>
+        <h2 id="breakdown-title">Motor Calado</h2>
+        <p id="breakdown-desc">La moto se detuvo en la banquina.</p>
+        <button id="btn-respawn" class="btn-ignite">VOLVER A INTENTAR</button>
+      </div>
     </div>
 
   </div>
