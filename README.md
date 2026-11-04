@@ -1,54 +1,47 @@
-# Ruta Abierta: Aventura en Moto 🏍️💨
+# MotoTravel PRO: Simulador de Viajes en Moto 🏍️💨
 
-Un videojuego de aventura y viajes en motocicleta en dos ruedas hacia lo desconocido. Explora rutas cambiantes, gestiona combustible y dinero, repara tu moto en talleres de paso y toma decisiones narrativas en cada estación del camino.
+Un **simulador realista en primera persona** de viajes y travesías en motocicleta de media/alta cilindrada (Trail 650cc). 
 
----
-
-## 🌟 Características
-
-- **Conducción en Ruta Dinámica:** Control de velocidad, frenada y maniobra inclinando la moto con física suave.
-- **Biomas Cambiantes:** Desiertos áridos, pasos de alta montaña, caminos boscosos y costas marítimas.
-- **Mecánicas de Aventura y Supervivencia:**
-  - Gestión de **Combustible (Nafta)**: No te quedes sin nafta en medio de la estepa.
-  - Estado y durabilidad de la **Moto**: Esquiva baches y piedras en la calzada para no destrozar la suspensión.
-  - **Dinero**: Para repostar, descansar en campings o pagarle a mecánicos en la ruta.
-- **Paradas de Aventura y Diálogos:** Encuentros con otros viajeros, camioneros y mecánicos locales con múltiples decisiones.
-- **Efectos de Sonido Procedurales:** Motor, bocina y choques generados en tiempo real mediante la Web Audio API (sin descargas externas).
+Diseñado con física de transmisión manual por marchas, cálculo de RPM del motor en tiempo real, temperatura de refrigeración, aceleración gradual, inclinación giroscópica de curva y navegación GPS en ruta.
 
 ---
 
-## 🎮 Controles
+## 🕹️ Mandos de Simulación
 
-| Tecla | Acción |
+| Tecla | Función en la Moto |
 |---|---|
-| `⬆️` o `W` | Acelerar moto |
-| `⬇️` o `S` | Frenar |
-| `⬅️` / `➡️` o `A` / `D` | Girar e inclinar moto |
-| `Espacio` o `H` | Tocar bocina |
+| <kbd>W</kbd> o <kbd>⬆️</kbd> | Acelerador gradual (entrega de potencia según marcha) |
+| <kbd>S</kbd> o <kbd>⬇️</kbd> | Freno combinado (freno delantero + trasero) |
+| <kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> | Manillar e inclinación (*counter-steering*) |
+| <kbd>E</kbd> | **Subir marcha** (1ª ➔ 2ª ➔ 3ª ➔ 4ª ➔ 5ª ➔ 6ª) |
+| <kbd>Q</kbd> | **Bajar marcha** (6ª ➔ 5ª ... ➔ 1ª ➔ Neutro) |
+| <kbd>L</kbd> | Encender / apagar haz de luces delanteras |
+| <kbd>H</kbd> | Tocar bocina |
+
+---
+
+## ⚙️ Características del Simulador
+
+1. **Cockpit en Primera Persona:**
+   - Tablero digital con indicador de marcha activa (`N, 1, 2, 3, 4, 5, 6`).
+   - Tacómetro digital de RPM con zona roja (*redline* a partir de 8.500 RPM).
+   - Velocímetro digital en km/h.
+   - Manillar, puños de goma, manetas de embrague y freno, y espejos retrovisores.
+2. **Dinámica de Motor Realista:**
+   - Si aceleras en una marcha alta a baja velocidad, el motor se ahoga (*bog down*).
+   - Freno motor al soltar el acelerador o reducir de marcha.
+   - Temperatura del motor: sube con altas revoluciones y baja con el viento de la marcha.
+   - Gestión de litros reales de nafta y presión de neumáticos (PSI).
+3. **Navegación GPS y Paradas de Ruta:**
+   - Puntos de servicio YPF, talleres de alta montaña y refugios.
+   - Decisiones mecánicas: calibrar PSI, repostar nafta prémium, dejar enfriar el motor o revisar frenos.
+4. **Audio Procedural del Motor:**
+   - Sonido modulado en tiempo real según RPM exactas, silbido del viento por aerodinámica y chirrido de neumáticos al frenar bruscamente.
 
 ---
 
 ## 🚀 Cómo Jugar
 
-No requiere compilación ni dependencias pesadas:
-1. Simplemente haz doble clic en `index.html` para abrirlo en cualquier navegador web moderno (Chrome, Edge, Firefox, Brave).
-2. O bien, levanta un servidor local:
-   ```bash
-   npx serve .
-   ```
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-desarrollo-propio/
-├── index.html         # Estructura del juego, HUD y modales
-├── style.css          # Estilos visuales y diseño responsive
-├── js/
-│   ├── audio.js       # Sintetizador de audio con Web Audio API
-│   ├── adventure.js   # Sistema narrativo, paradas y decisiones
-│   └── game.js        # Motor de juego, física y render en Canvas
-├── .gitignore         # Archivos temporales ignorados
-└── README.md          # Documentación del proyecto
-```
+Abre en tu navegador:
+👉 **[http://localhost:3000](http://localhost:3000)**
+o ejecuta `node server.js` en la consola.

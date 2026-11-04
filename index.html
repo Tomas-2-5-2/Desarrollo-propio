@@ -3,96 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ruta Abierta: Aventura en Moto</title>
+  <title>MotoTravel Simulator: Aventura en Primera Persona</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="game-container">
-    <!-- Barra Superior / HUD -->
-    <header id="hud">
-      <div class="hud-item">
-        <span class="hud-label">DESTINO</span>
-        <span id="hud-destination" class="hud-value">Cruce del Desierto</span>
-      </div>
-      <div class="hud-item">
-        <span class="hud-label">DISTANCIA RESTANTE</span>
-        <span id="hud-distance" class="hud-value">12.0 km</span>
-      </div>
-      <div class="hud-item gauge-item">
-        <span class="hud-label">COMBUSTIBLE</span>
-        <div class="meter-bar"><div id="fuel-bar" style="width: 100%;"></div></div>
-        <span id="hud-fuel" class="hud-subvalue">100%</span>
-      </div>
-      <div class="hud-item gauge-item">
-        <span class="hud-label">MOTO (ESTADO)</span>
-        <div class="meter-bar"><div id="health-bar" style="width: 100%;"></div></div>
-        <span id="hud-health" class="hud-subvalue">100%</span>
-      </div>
-      <div class="hud-item">
-        <span class="hud-label">DINERO</span>
-        <span id="hud-money" class="hud-value">$150</span>
-      </div>
-      <div class="hud-item">
-        <span class="hud-label">VELOCIDAD</span>
-        <span id="hud-speed" class="hud-value">0 km/h</span>
-      </div>
-    </header>
+  <div id="sim-container">
+    
+    <!-- Ventana Principal del Simulador (Primera Persona) -->
+    <div id="viewport-wrapper">
+      <canvas id="simCanvas" width="960" height="600"></canvas>
 
-    <!-- Canvas Principal del Juego -->
-    <div id="canvas-wrapper">
-      <canvas id="gameCanvas" width="900" height="540"></canvas>
-
-      <!-- Pantalla de Inicio / Instrucciones -->
-      <div id="start-screen" class="overlay-modal active">
-        <div class="modal-box">
-          <div class="badge">AVENTURA EN MOTO</div>
-          <h1>RUTA ABIERTA</h1>
-          <p class="subtitle">Un viaje en dos ruedas hacia lo desconocido</p>
-          <div class="story-intro">
-            <p>Empacas tus pocas pertenencias en las alforjas, ajustas el casco y enciendes el motor. Tienes por delante cientos de kilómetros de asfalto, paisajes cambiantes, estaciones solitarias y decisiones difíciles.</p>
+      <!-- Panel Digital / GPS Integrado en Pantalla -->
+      <div id="gps-display">
+        <div class="gps-header">
+          <span class="gps-status-dot"></span>
+          <span id="gps-route-name">RUTA 40 // TRAMO SUR</span>
+        </div>
+        <div class="gps-body">
+          <div class="gps-metric">
+            <span class="label">PRÓXIMA PARADA</span>
+            <span id="gps-target" class="val">Estación Los Pinos</span>
           </div>
-          <div class="controls-guide">
-            <div class="ctrl-row"><span>⬅️ / ➡️ o [A] / [D]</span> : Girar la moto</div>
-            <div class="ctrl-row"><span>⬆️ o [W]</span> : Acelerar</div>
-            <div class="ctrl-row"><span>⬇️ o [S]</span> : Frenar</div>
-            <div class="ctrl-row"><span>[ESPACIO] o [H]</span> : Tocar bocina</div>
+          <div class="gps-metric">
+            <span class="label">DISTANCIA</span>
+            <span id="gps-dist" class="val">15.0 km</span>
           </div>
-          <button id="btn-start" class="btn-primary">¡ENCENDER MOTOR Y SALIR A LA RUTA!</button>
+          <div class="gps-metric">
+            <span class="label">TIEMPO ESTIMADO</span>
+            <span id="gps-eta" class="val">11 min</span>
+          </div>
         </div>
       </div>
 
-      <!-- Pantalla de Evento / Parada en la Ruta (Pueblo, Taller, Cruce) -->
-      <div id="adventure-modal" class="overlay-modal">
-        <div class="modal-box event-box">
-          <div id="event-badge" class="badge">PARADA EN EL CAMINO</div>
-          <h2 id="event-title">Estación de Servicio "El Solitario"</h2>
-          <div id="event-image-container" class="event-illustration">
-            <span id="event-icon">⛽</span>
+      <!-- Pantalla de Inicio / Configuración del Simulador -->
+      <div id="start-modal" class="sim-overlay active">
+        <div class="sim-card">
+          <div class="sim-tag">SIMULADOR EN PRIMERA PERSONA</div>
+          <h1>MOTO-TRAVEL PRO</h1>
+          <p class="tagline">Simulador de viajes en ruta, física de marchas y aventura</p>
+
+          <div class="specs-grid">
+            <div class="spec-box">
+              <span class="spec-title">MOTO</span>
+              <span class="spec-val">Trail Aventura 650cc</span>
+            </div>
+            <div class="spec-box">
+              <span class="spec-title">TRANSMISIÓN</span>
+              <span class="spec-val">6 Marchas (Manual)</span>
+            </div>
+            <div class="spec-box">
+              <span class="spec-title">DEPÓSITO</span>
+              <span class="spec-val">18 Litros</span>
+            </div>
+            <div class="spec-box">
+              <span class="spec-title">PESO CARGA</span>
+              <span class="spec-val">220 kg con alforjas</span>
+            </div>
           </div>
-          <p id="event-description" class="event-text">
-            El asfalto vibra con el calor. A la orilla de la ruta ves un viejo surtidor con un cartel oxidado. Un mecánico de mirada tranquila te saluda desde la sombra.
+
+          <div class="sim-instructions">
+            <h3>MANDOS DEL PILOTO:</h3>
+            <div class="key-grid">
+              <div><kbd>W</kbd> o <kbd>⬆️</kbd> Acelerador gradual</div>
+              <div><kbd>S</kbd> o <kbd>⬇️</kbd> Freno combinado</div>
+              <div><kbd>A</kbd> / <kbd>D</kbd> o <kbd>⬅️</kbd> / <kbd>➡️</kbd> Inclinación / Manillar</div>
+              <div><kbd>E</kbd> Subir marcha (1ª ➔ 6ª)</div>
+              <div><kbd>Q</kbd> Bajar marcha (6ª ➔ 1ª ➔ Neutro)</div>
+              <div><kbd>L</kbd> Faro delantero (Luces)</div>
+              <div><kbd>H</kbd> Bocina</div>
+            </div>
+          </div>
+
+          <button id="btn-ignite" class="btn-ignite">
+            <span class="btn-icon">⚡</span> DAR CONTACTO Y ARRANCAR MOTO
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal de Taller / Parada de Ruta -->
+      <div id="service-modal" class="sim-overlay">
+        <div class="sim-card service-card">
+          <div class="sim-tag">PUNTO DE ASISTENCIA EN RUTA</div>
+          <h2 id="service-name">Parador 'El Cóndor' - Km 184</h2>
+          <div class="service-stats">
+            <div>Combustible actual: <b id="srv-fuel">12 L</b></div>
+            <div>Temp. Motor: <b id="srv-temp">88°C</b></div>
+            <div>Presión neumáticos: <b id="srv-tires">32 PSI</b></div>
+            <div>Efectivo: <b id="srv-money">$180</b></div>
+          </div>
+          <p id="service-narrative" class="service-text">
+            Detienes la moto al borde de la calzada. El motor burbujea al ralentí mientras el calor sube por el tanque.
           </p>
-          <div id="event-choices" class="choices-container">
-            <!-- Las opciones se inyectan dinámicamente con JavaScript -->
+          <div id="service-actions" class="service-buttons">
+            <!-- Botones dinámicos -->
           </div>
         </div>
       </div>
 
-      <!-- Pantalla de Fin de Juego (Game Over / Victoria) -->
-      <div id="gameover-modal" class="overlay-modal">
-        <div class="modal-box">
-          <div id="gameover-badge" class="badge danger">FIN DEL VIAJE</div>
-          <h2 id="gameover-title">La moto no da más</h2>
-          <p id="gameover-desc" class="event-text">Te has quedado varado al costado de la ruta.</p>
-          <button id="btn-restart" class="btn-primary">INTENTAR DE NUEVO</button>
+      <!-- Modal de Avería o Quedada sin nafta -->
+      <div id="breakdown-modal" class="sim-overlay">
+        <div class="sim-card breakdown-card">
+          <div class="sim-tag danger">EMERGENCIA EN RUTA</div>
+          <h2 id="breakdown-title">Motor Calado</h2>
+          <p id="breakdown-desc">La moto se detuvo en la banquina.</p>
+          <button id="btn-respawn" class="btn-ignite">LLAMAR AL AUXILIO MECÁNICO</button>
         </div>
       </div>
+
     </div>
 
-    <!-- Barra Inferior de Información y Consejos -->
-    <footer id="footer-tips">
-      <span>💡 Esquiva baches y manchas de aceite en la calzada. Cuida el combustible antes de que la próxima estación quede demasiado lejos.</span>
-    </footer>
+    <!-- Barra de Estado Inferior -->
+    <div id="telemetry-bar">
+      <span>⚙️ <b>MODO SIMULADOR:</b> Recuerda subir de marcha con <kbd>E</kbd> a las 5.500 RPM para no recalentar el motor ni gastar nafta de más.</span>
+    </div>
+
   </div>
 
   <script src="js/audio.js"></script>

@@ -1,39 +1,40 @@
-// Sistema Narrativo y Paradas de Aventura
-const ADVENTURE_LOCATIONS = [
+// Puntos de Asistencia y Paradas en Ruta para el Simulador
+const SIM_WAYPOINTS = [
   {
     id: 1,
-    name: "Estación 'El Solitario'",
-    distance: 10,
+    name: "Estación YPF 'El Desierto' - Km 64",
+    distance: 12.0,
     biome: "desierto",
-    icon: "⛽",
-    title: "Estación en medio de la estepa",
-    description: "Una solitaria estación de servicio en medio del viento y la arena. El surtidor de nafta cruje con el viento y un perro dormita bajo el alero.",
-    choices: [
+    roadCondition: "Asfalto seco con polvo",
+    description: "Un surtidor solitario en la inmensidad. El viento patagónico silba en el casco. Puedes repostar nafta prémium, medir presión de neumáticos y limpiar la visera.",
+    actions: [
       {
-        text: "Cargar tanque completo de nafta",
-        cost: 30,
-        effect: (state) => {
-          state.fuel = 100;
-          return "Llenaste el tanque de combustible. ¡Listo para seguir!";
+        text: "Cargar tanque lleno de nafta (18 Litros)",
+        cost: 25,
+        effect: (sim) => {
+          sim.fuelLiters = 18.0;
+          return "Tanque de combustible completado a 18 litros.";
         }
       },
       {
-        text: "Pedirle al mecánico que ajuste la cadena y frenos",
-        cost: 40,
-        effect: (state) => {
-          state.health = Math.min(100, state.health + 30);
-          return "El mecánico ajustó y lubricó la moto. Rueda mucho más suave.";
+        text: "Calibrar presión de neumáticos a 32 PSI",
+        cost: 5,
+        effect: (sim) => {
+          sim.tirePressure = 32.0;
+          sim.handlingBonus = 1.0;
+          return "Neumáticos inflados a 32 PSI. Agarre óptimo para la ruta.";
         }
       },
       {
-        text: "Conversar con el camionero en el café",
-        cost: 0,
-        effect: (state) => {
-          return "El camionero te advierte: 'Cuidado con el tramo que sigue, hay muchas piedras sueltas en la calzada'.";
+        text: "Dejar enfriar el motor y tomar un café",
+        cost: 8,
+        effect: (sim) => {
+          sim.engineTemp = 75.0;
+          return "Temperatura de motor normalizada a 75°C. Listo para la siguiente etapa.";
         }
       },
       {
-        text: "Volver a la ruta y continuar el viaje",
+        text: "Volver a la ruta y arrancar marcha",
         cost: 0,
         isNext: true
       }
@@ -41,39 +42,30 @@ const ADVENTURE_LOCATIONS = [
   },
   {
     id: 2,
-    name: "Paso de las Altas Cumbres",
-    distance: 14,
+    name: "Cuesta de Montaña 'El Caracol' - Km 140",
+    distance: 16.0,
     biome: "montaña",
-    icon: "🏔️",
-    title: "Mirador de las Sierras",
-    description: "El aire se vuelve frío y puro. Llegaste a lo más alto de la cuesta de montaña. La vista panorámica del valle quita el aliento. Hay un puesto de artesanos locales y un mirador.",
-    choices: [
+    roadCondition: "Curvas cerradas y pendientes",
+    description: "Zona de curvas peligrosas de alta montaña. El motor trabaja forzado en 2ª y 3ª marcha. En la cima hay un taller de montaña con vista a las sierras.",
+    actions: [
       {
-        text: "Comprar un bidón de reserva de nafta y un café caliente",
-        cost: 35,
-        effect: (state) => {
-          state.fuel = Math.min(100, state.fuel + 40);
-          return "El café te revivió las manos y el bidón te dará tranquilidad.";
-        }
-      },
-      {
-        text: "Ayudar a otro motociclista varado",
-        cost: 0,
-        effect: (state) => {
-          state.money += 25;
-          return "Le prestaste una llave de bujías. Agradecido, te dio $25 para los peajes.";
-        }
-      },
-      {
-        text: "Revisar la moto por el esfuerzo de subida",
+        text: "Comprar bidón auxiliar de 5 Litros",
         cost: 20,
-        effect: (state) => {
-          state.health = Math.min(100, state.health + 25);
-          return "Apretaste unos tornillos flojos por las vibraciones del ripio.";
+        effect: (sim) => {
+          sim.fuelLiters = Math.min(18, sim.fuelLiters + 5);
+          return "Agregaste 5 litros de reserva al tanque.";
         }
       },
       {
-        text: "Comenzar el descenso hacia el valle",
+        text: "Revisar pastillas de freno y tensión de cadena",
+        cost: 35,
+        effect: (sim) => {
+          sim.bikeHealth = 100;
+          return "Mecánico revisó frenos y cadena. Seguridad al 100%.";
+        }
+      },
+      {
+        text: "Continuar el descenso hacia el valle",
         cost: 0,
         isNext: true
       }
@@ -81,38 +73,30 @@ const ADVENTURE_LOCATIONS = [
   },
   {
     id: 3,
-    name: "Camping Río Claro",
-    distance: 12,
+    name: "Paso de Bosque Húmedo - Km 210",
+    distance: 14.0,
     biome: "bosque",
-    icon: "🏕️",
-    title: "Atardecer bajo los pinos",
-    description: "Un sendero arbolado te lleva a la orilla de un río cristalino. El cielo se tiñe de violeta y naranja. Varios viajeros han armado carpas y hay un fogón encendido.",
-    choices: [
+    roadCondition: "Pavimento mojado / llovizna",
+    description: "El clima cambia de golpe: llovizna sobre el parabrisas y olor a tierra mojada. El asfalto resbala más, exige marchas intermedias y suavidad al doblar.",
+    actions: [
       {
-        text: "Armar campamento y descansar toda la noche",
+        text: "Parar en el parador de troncos a secarse y descansar",
         cost: 15,
-        effect: (state) => {
-          state.health = 100;
-          return "Dormiste profundamente con el sonido del río. ¡Descanso total!";
+        effect: (sim) => {
+          sim.engineTemp = 70.0;
+          return "Descanso reconfortante. El clima mejora ligeramente.";
         }
       },
       {
-        text: "Compartir historias y comida junto al fogón",
-        cost: 10,
-        effect: (state) => {
-          return "Un viajero veterano te comparte un atajo que te ahorrará desgaste en la próxima etapa.";
+        text: "Llenar combustible para el último tramo",
+        cost: 22,
+        effect: (sim) => {
+          sim.fuelLiters = 18.0;
+          return "Tanque al máximo para llegar a destino.";
         }
       },
       {
-        text: "Comprar provisiones y nafta suelta en el almacén de campo",
-        cost: 40,
-        effect: (state) => {
-          state.fuel = 100;
-          return "Tanque lleno y provisiones listas.";
-        }
-      },
-      {
-        text: "Cargar las alforjas y partir al amanecer",
+        text: "Enfilar hacia la costa oceánica",
         cost: 0,
         isNext: true
       }
@@ -120,37 +104,36 @@ const ADVENTURE_LOCATIONS = [
   },
   {
     id: 4,
-    name: "Ciudad Costera del Faro",
-    distance: 15,
+    name: "Bahía del Faro del Fin del Mundo",
+    distance: 18.0,
     biome: "costa",
-    icon: "🌊",
-    title: "¡El océano en el horizonte!",
-    description: "Sientes el olor a salitre y brisa marina en el rostro. Finalmente superaste cientos de kilómetros de ruta. El faro ilumina la bahía. ¡Completaste la gran travesía en moto!",
-    choices: [
+    roadCondition: "Ruta costera con brisa marina",
+    description: "¡Has completado la travesía! El rugido del mar acompaña el ralentí de tu moto. El odómetro marca cientos de kilómetros superados con precisión de piloto.",
+    actions: [
       {
-        text: "¡Festejar la llegada frente al mar!",
+        text: "Apagar el motor y contemplar el mar",
         cost: 0,
-        effect: (state) => {
-          state.isVictory = true;
-          return "¡Misión cumplida! Has demostrado el temple de un verdadero motociclista aventurero.";
+        effect: (sim) => {
+          sim.isVictory = true;
+          return "¡Objetivo cumplido! Has dominado el simulador de ruta en moto.";
         }
       }
     ]
   }
 ];
 
-window.AdventureSystem = {
-  locations: ADVENTURE_LOCATIONS,
-  currentLocationIndex: 0,
+window.WaypointSystem = {
+  waypoints: SIM_WAYPOINTS,
+  currentIndex: 0,
 
-  getCurrentTarget() {
-    return this.locations[this.currentLocationIndex] || null;
+  getCurrent() {
+    return this.waypoints[this.currentIndex];
   },
 
-  advanceLocation() {
-    if (this.currentLocationIndex < this.locations.length - 1) {
-      this.currentLocationIndex++;
-      return this.locations[this.currentLocationIndex];
+  advance() {
+    if (this.currentIndex < this.waypoints.length - 1) {
+      this.currentIndex++;
+      return this.waypoints[this.currentIndex];
     }
     return null;
   }
