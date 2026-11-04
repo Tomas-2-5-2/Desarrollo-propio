@@ -966,220 +966,324 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
 }
 
 // ============================================================================
-// 9. CABINA EN PRIMERA PERSONA DE ALTA PRECISIÓN (ESTILO RIDE 4 / DUCATI V4)
+// 9. CABINA EN PRIMERA PERSONA: SCRAMBLER CLÁSICA (TRIUMPH 400 X / BEAR 650)
+//    Vista del piloto más alta y erguida, reloj circular único, manillar ancho
+//    con barra transversal y pad acolchado, faro redondo con rejilla, espejos
+//    redondos clásicos, cubrepuños y tanque lágrima bitono con tapa Monza.
 // ============================================================================
 const cockpitGroup = new THREE.Group();
+// Posición baja respecto a los ojos del piloto (postura erguida de Scrambler mirando desde arriba)
+cockpitGroup.position.set(0, -0.14, -0.05);
+cockpitGroup.rotation.x = 0.09;
 
 const carbonWeaveTex = createCarbonWeaveTexture();
-const carbonFiberMat = new THREE.MeshStandardMaterial({
-  map: carbonWeaveTex,
-  roughness: 0.26,
-  metalness: 0.45,
+const scramblerGreenMat = new THREE.MeshPhysicalMaterial({
+  color: 0x1e3a2f, // British Racing / Khaki Scrambler Green
+  metalness: 0.65,
+  roughness: 0.16,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.08,
+  envMapIntensity: 2.0
+});
+const creamBadgeMat = new THREE.MeshPhysicalMaterial({
+  color: 0xf5f0e1, // Crema clásico bitono
+  metalness: 0.25,
+  roughness: 0.18,
+  clearcoat: 1.0,
   envMapIntensity: 1.6
 });
-const candyRedPaintMat = new THREE.MeshPhysicalMaterial({
-  color: 0xc8102e,
-  metalness: 0.78,
-  roughness: 0.12,
-  clearcoat: 1.0,
-  clearcoatRoughness: 0.06,
-  envMapIntensity: 2.2
-});
 const goldAnodizedMat = new THREE.MeshStandardMaterial({
-  color: 0xd4af37,
-  metalness: 0.92,
-  roughness: 0.18,
+  color: 0xd4af37, // Horquilla invertida dorada (Triumph 400 X / Showa)
+  metalness: 0.90,
+  roughness: 0.20,
   envMapIntensity: 1.8
 });
-const billetAluminumMat = new THREE.MeshStandardMaterial({
-  color: 0x94a3b8,
-  metalness: 0.90,
-  roughness: 0.24,
+const chromeBrightMat = new THREE.MeshStandardMaterial({
+  color: 0xf8fafc,
+  metalness: 0.98,
+  roughness: 0.06,
+  envMapIntensity: 2.4
+});
+const brushedAluminumMat = new THREE.MeshStandardMaterial({
+  color: 0xcbd5e1,
+  metalness: 0.88,
+  roughness: 0.26,
   envMapIntensity: 1.6
 });
 const darkTitaniumMat = new THREE.MeshStandardMaterial({
-  color: 0x334155,
-  metalness: 0.85,
-  roughness: 0.28,
-  envMapIntensity: 1.5
+  color: 0x262b33,
+  metalness: 0.80,
+  roughness: 0.32,
+  envMapIntensity: 1.4
 });
 const matteBlackMat = new THREE.MeshStandardMaterial({
-  color: 0x11141a,
-  roughness: 0.82,
-  metalness: 0.18
+  color: 0x12151a,
+  roughness: 0.84,
+  metalness: 0.15
+});
+const vintageLeatherMat = new THREE.MeshStandardMaterial({
+  color: 0x5c3317, // Cuero marrón cognac clásico (guantes y correa)
+  normalMap: terrainMaps.norm,
+  normalScale: new THREE.Vector2(0.25, 0.25),
+  roughness: 0.58,
+  metalness: 0.10
+});
+const rubberPadMat = new THREE.MeshStandardMaterial({
+  color: 0x181a1f,
+  roughness: 0.92,
+  metalness: 0.05
 });
 
-// A. Carenado Delantero Simétrico y Cúpula Aerodinámica (Bajo la línea de visión)
-const fairingGroup = new THREE.Group();
-fairingGroup.position.set(0, -0.08, -0.68);
+// A. Faro Delantero Redondo Clásico con Aro Cromado, Rejilla Scrambler y Guardabarros Alto
+const headlightGroup = new THREE.Group();
+headlightGroup.position.set(0, -0.18, -0.66);
 
-// Aletas laterales aerodinámicas del carenado frontal (Rojo Ducati + Carbono)
-[-1, 1].forEach(s => {
-  const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.28), candyRedPaintMat);
-  cheek.position.set(s * 0.19, -0.06, 0.04);
-  cheek.rotation.y = s * -0.32;
-  cheek.rotation.z = s * 0.25;
-  fairingGroup.add(cheek);
+// Cazoleta redonda del faro (vista desde arriba por el piloto)
+const bowlGeo = new THREE.SphereGeometry(0.105, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.65);
+const headlightBowl = new THREE.Mesh(bowlGeo, matteBlackMat);
+headlightBowl.rotation.x = -Math.PI / 2;
+headlightGroup.add(headlightBowl);
 
-  const winglet = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.015, 0.14), carbonFiberMat);
-  winglet.position.set(s * 0.27, -0.04, 0.02);
-  winglet.rotation.z = s * -0.15;
-  fairingGroup.add(winglet);
-});
+// Aro cromado clásico del faro redondo
+const headlightRim = new THREE.Mesh(new THREE.TorusGeometry(0.102, 0.010, 16, 36), chromeBrightMat);
+headlightRim.position.set(0, 0, -0.035);
+headlightGroup.add(headlightRim);
 
-// Parabrisas / Cúpula Acrílica Curvada Simétrica (Sin obstruir el tablero ni la ruta)
-const windGeo = new THREE.PlaneGeometry(0.38, 0.17, 24, 8);
-const wPos = windGeo.attributes.position;
-for (let i = 0; i < wPos.count; i++) {
-  const wx = wPos.getX(i);
-  const wy = wPos.getY(i);
-  // Curvatura parabólica suave en X y barrido aerodinámico en Y
-  wPos.setZ(i, -wx * wx * 1.4 + wy * 0.35);
-  wPos.setY(i, wy - wx * wx * 0.35);
+// Rejilla protectora de faro estilo Scrambler (barras horizontales negras)
+for (let g = -2; g <= 2; g++) {
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.19, 8), matteBlackMat);
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, g * 0.028, -0.048);
+  headlightGroup.add(bar);
 }
-windGeo.computeVertexNormals();
 
-const windscreenMat = new THREE.MeshPhysicalMaterial({
-  color: 0x0f172a,
-  transparent: true,
-  opacity: 0.32,
-  roughness: 0.04,
-  metalness: 0.1,
-  clearcoat: 1.0,
-  envMapIntensity: 2.4,
-  side: THREE.DoubleSide
+// Pequeña visera / placa portanúmero de aluminio cepillado sobre el faro (estilo Triumph 400 X)
+const flyscreenGeo = new THREE.CylinderGeometry(0.11, 0.12, 0.09, 24, 1, true, Math.PI * 0.72, Math.PI * 0.56);
+const flyscreen = new THREE.Mesh(flyscreenGeo, brushedAluminumMat);
+flyscreen.rotation.x = -0.45;
+flyscreen.position.set(0, 0.075, -0.01);
+headlightGroup.add(flyscreen);
+
+// Guiños delanteros redondos tipo bala (Bullet Turn Signals) a los lados de la horquilla
+[-1, 1].forEach(s => {
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.05, 8), matteBlackMat);
+  stalk.rotation.z = Math.PI / 2;
+  stalk.position.set(s * 0.17, -0.02, 0.04);
+  headlightGroup.add(stalk);
+
+  const bulletBody = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 12), chromeBrightMat);
+  bulletBody.scale.set(1.0, 1.0, 1.4);
+  bulletBody.position.set(s * 0.20, -0.02, 0.04);
+  headlightGroup.add(bulletBody);
+
+  const amberLens = new THREE.Mesh(
+    new THREE.SphereGeometry(0.020, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+  );
+  amberLens.position.set(s * 0.20, -0.02, 0.025);
+  headlightGroup.add(amberLens);
 });
-const windscreen = new THREE.Mesh(windGeo, windscreenMat);
-windscreen.position.set(0, 0.08, -0.02);
-windscreen.rotation.x = -0.52;
-fairingGroup.add(windscreen);
 
-cockpitGroup.add(fairingGroup);
+// Guardabarros delantero de aluminio cepillado asomando abajo adelante
+const frontFender = new THREE.Mesh(
+  new THREE.BoxGeometry(0.13, 0.015, 0.26),
+  brushedAluminumMat
+);
+frontFender.position.set(0, -0.16, -0.09);
+frontFender.rotation.x = 0.22;
+headlightGroup.add(frontFender);
 
-// B. Pantalla Digital TFT Full-Color con Visera Antirreflejo (100% despejada y centrada)
+cockpitGroup.add(headlightGroup);
+
+// B. Reloj Circular Único Clásico-Moderno (Estilo Triumph 400 X / Royal Enfield Bear 650)
 const dashCanvas = document.createElement('canvas');
-dashCanvas.width = 1024;
+dashCanvas.width = 512;
 dashCanvas.height = 512;
 const dashCtx = dashCanvas.getContext('2d');
 const dashTexture = new THREE.CanvasTexture(dashCanvas);
 dashTexture.anisotropy = 4;
 
 const dashGroup = new THREE.Group();
-dashGroup.position.set(0, -0.032, -0.56);
-dashGroup.rotation.x = -0.24;
+// Montado ligeramente desplazado/centrado sobre las torretas, inclinado hacia la vista alta del piloto
+dashGroup.position.set(0, -0.038, -0.54);
+dashGroup.rotation.x = -0.42;
 
-// Carcasa trasera en aluminio negro anodizado
-const dashHousing = new THREE.Mesh(new THREE.BoxGeometry(0.268, 0.142, 0.022), matteBlackMat);
-dashGroup.add(dashHousing);
+// Copa cilíndrica trasera en aluminio cepillado y negro
+const gaugeCup = new THREE.Mesh(new THREE.CylinderGeometry(0.096, 0.088, 0.042, 48), matteBlackMat);
+gaugeCup.rotation.x = Math.PI / 2;
+gaugeCup.position.z = -0.015;
+dashGroup.add(gaugeCup);
 
-// Visera parasol superior sobre la pantalla TFT
-const dashHood = new THREE.Mesh(new THREE.BoxGeometry(0.274, 0.012, 0.042), carbonFiberMat);
-dashHood.position.set(0, 0.072, 0.008);
-dashGroup.add(dashHood);
+// Aro biselado cromado clásico alrededor del reloj
+const gaugeChromeBezel = new THREE.Mesh(new THREE.TorusGeometry(0.094, 0.007, 18, 48), chromeBrightMat);
+gaugeChromeBezel.position.z = 0.006;
+dashGroup.add(gaugeChromeBezel);
 
-// Pantalla OLED (hija directa de dashGroup a z = +0.0125 para que jamás se recorte)
+// Esfera circular del reloj (Dial analógico + pantalla digital integrada)
 const dashScreen = new THREE.Mesh(
-  new THREE.PlaneGeometry(0.252, 0.128),
+  new THREE.CircleGeometry(0.090, 48),
   new THREE.MeshBasicMaterial({ map: dashTexture })
 );
-dashScreen.position.set(0, 0, 0.0125);
+dashScreen.position.set(0, 0, 0.008);
 dashGroup.add(dashScreen);
+
+// Cristal convexo antirreflejo sobre el reloj
+const gaugeGlass = new THREE.Mesh(
+  new THREE.CircleGeometry(0.090, 36),
+  new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.14,
+    roughness: 0.04,
+    clearcoat: 1.0,
+    envMapIntensity: 2.2
+  })
+);
+gaugeGlass.position.set(0, 0, 0.010);
+dashGroup.add(gaugeGlass);
 
 cockpitGroup.add(dashGroup);
 
-// C. Horquilla Invertida Öhlins Anodizada en Oro, Tija CNC y Amortiguador de Dirección
-const forkGeo = new THREE.CylinderGeometry(0.031, 0.029, 0.45, 20);
-const preloadMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.9, roughness: 0.18 });
-const reboundRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.85, roughness: 0.2 });
+// C. Horquilla Invertida Dorada de 43mm, Tija Forjada Negra y Torretas Altas Scrambler
+const forkGeo = new THREE.CylinderGeometry(0.032, 0.030, 0.48, 20);
 
 [-1, 1].forEach(s => {
   const fork = new THREE.Mesh(forkGeo, goldAnodizedMat);
-  fork.position.set(s * 0.145, -0.27, -0.54);
-  fork.rotation.x = Math.PI / 7.5;
+  fork.position.set(s * 0.148, -0.26, -0.53);
+  fork.rotation.x = Math.PI / 7.2;
   cockpitGroup.add(fork);
 
-  // Tapa azul anodizada de precarga + regulador rojo de rebote
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.012, 16), preloadMat);
-  cap.position.set(s * 0.145, -0.072, -0.452);
-  cap.rotation.x = Math.PI / 7.5;
+  // Tapas superiores de horquilla en aluminio mecanizado plata
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 16), brushedAluminumMat);
+  cap.position.set(s * 0.148, -0.055, -0.435);
+  cap.rotation.x = Math.PI / 7.2;
   cockpitGroup.add(cap);
 
-  const clicker = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.016, 6), reboundRedMat);
-  clicker.position.set(s * 0.145, -0.068, -0.450);
-  clicker.rotation.x = Math.PI / 7.5;
-  cockpitGroup.add(clicker);
+  const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.016, 6), goldAnodizedMat);
+  bolt.position.set(s * 0.148, -0.052, -0.433);
+  bolt.rotation.x = Math.PI / 7.2;
+  cockpitGroup.add(bolt);
 });
 
-// Tija Superior Mecanizada CNC (Triple Clamp)
+// Tija Superior Forjada (Triple Clamp) y Torretas Altas
 const tripleClampGroup = new THREE.Group();
-tripleClampGroup.position.set(0, -0.105, -0.475);
-tripleClampGroup.rotation.x = Math.PI / 7.5;
+tripleClampGroup.position.set(0, -0.095, -0.465);
+tripleClampGroup.rotation.x = Math.PI / 7.2;
 
-const clampMain = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.022, 0.085), darkTitaniumMat);
+const clampMain = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.022, 0.088), matteBlackMat);
 tripleClampGroup.add(clampMain);
 
-// Torretas del manillar (Risers) y Tuerca Central
-[-0.075, 0.075].forEach(rx => {
-  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.038, 0.042), billetAluminumMat);
-  riser.position.set(rx, 0.022, 0.01);
+[-0.072, 0.072].forEach(rx => {
+  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.020, 0.048, 12), matteBlackMat);
+  riser.position.set(rx, 0.026, 0.015);
   tripleClampGroup.add(riser);
+
+  const riserCap = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.010, 0.044), brushedAluminumMat);
+  riserCap.position.set(rx, 0.050, 0.015);
+  tripleClampGroup.add(riserCap);
 });
 
-const stemNut = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.016, 6), goldAnodizedMat);
+const stemNut = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.014, 6), chromeBrightMat);
 stemNut.position.set(0, 0.014, -0.005);
 tripleClampGroup.add(stemNut);
 
-// Tambor de contacto con llave
-const ignitionBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.025, 16), matteBlackMat);
-ignitionBarrel.position.set(0, 0.015, -0.055);
+// Tambor de llave con llavero de cuero marrón clásico
+const ignitionBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.020, 0.020, 0.024, 16), chromeBrightMat);
+ignitionBarrel.position.set(0.065, 0.015, -0.045);
 tripleClampGroup.add(ignitionBarrel);
 
-// Amortiguador de Dirección Transversal Öhlins
-const damperBody = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.16, 16), goldAnodizedMat);
-damperBody.rotation.z = Math.PI / 2;
-damperBody.position.set(0.02, 0.026, -0.032);
-tripleClampGroup.add(damperBody);
-
-const damperRod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.26, 12), billetAluminumMat);
-damperRod.rotation.z = Math.PI / 2;
-damperRod.position.set(-0.02, 0.026, -0.032);
-tripleClampGroup.add(damperRod);
+const keyTag = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.005, 0.042), vintageLeatherMat);
+keyTag.position.set(0.065, 0.028, -0.028);
+keyTag.rotation.y = 0.35;
+tripleClampGroup.add(keyTag);
 
 cockpitGroup.add(tripleClampGroup);
 
-// D. Tanque de Combustible Esculpido con Almohadillas de Tracción y Tapa CNC
+// D. Tanque Lágrima Clásico Bitono con Gomas Laterales, Correa de Cuero y Tapa Monza Cromada
 const tankGroup = new THREE.Group();
-const tankMain = new THREE.Mesh(new THREE.SphereGeometry(0.24, 32, 24), candyRedPaintMat);
-tankMain.scale.set(0.90, 0.62, 1.55);
-tankMain.position.set(0, -0.34, -0.24);
+
+// Cuerpo principal del tanque lágrima en Verde Scrambler
+const tankMain = new THREE.Mesh(new THREE.SphereGeometry(0.245, 32, 24), scramblerGreenMat);
+tankMain.scale.set(0.92, 0.60, 1.58);
+tankMain.position.set(0, -0.32, -0.22);
 tankGroup.add(tankMain);
 
-// Franja central en fibra de carbono
-const tankPad = new THREE.Mesh(new THREE.SphereGeometry(0.242, 24, 16, -0.25, 0.5, 0.35, 0.85), carbonFiberMat);
-tankPad.scale.set(0.90, 0.62, 1.55);
-tankPad.position.set(0, -0.338, -0.24);
-tankGroup.add(tankPad);
+// Paneles laterales crema bitono con filete dorado
+const tankCreamPanel = new THREE.Mesh(
+  new THREE.SphereGeometry(0.246, 28, 18, 0, Math.PI * 2, 0.55, 0.65),
+  creamBadgeMat
+);
+tankCreamPanel.scale.set(0.925, 0.60, 1.52);
+tankCreamPanel.position.set(0, -0.32, -0.22);
+tankGroup.add(tankCreamPanel);
 
-// Tapa de combustible rápida CNC con 6 tornillos perimetrales
-const fuelCapRing = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.008, 24), billetAluminumMat);
-fuelCapRing.position.set(0, -0.192, -0.26);
-fuelCapRing.rotation.x = 0.12;
-tankGroup.add(fuelCapRing);
+// Almohadillas laterales de goma negra acanalada para las rodillas (Knee Pads)
+[-1, 1].forEach(s => {
+  const kneePad = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.09, 0.22), rubberPadMat);
+  kneePad.position.set(s * 0.205, -0.30, -0.20);
+  kneePad.rotation.z = s * -0.25;
+  kneePad.rotation.y = s * 0.12;
+  tankGroup.add(kneePad);
+});
 
-const fuelCapInner = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.011, 20), carbonFiberMat);
-fuelCapInner.position.set(0, -0.190, -0.26);
-fuelCapInner.rotation.x = 0.12;
-tankGroup.add(fuelCapInner);
+// Correa central de aluminio cepillado y cuero sobre el lomo del tanque
+const tankStrap = new THREE.Mesh(
+  new THREE.SphereGeometry(0.248, 24, 16, -0.14, 0.28, 0.25, 1.1),
+  vintageLeatherMat
+);
+tankStrap.scale.set(0.92, 0.60, 1.58);
+tankStrap.position.set(0, -0.318, -0.22);
+tankGroup.add(tankStrap);
+
+// Tapa de combustible clásica tipo Monza en cromo pulido (desplazada a la derecha como en las clásicas británicas)
+const monzaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, 0.014, 24), chromeBrightMat);
+monzaBase.position.set(0.068, -0.182, -0.25);
+monzaBase.rotation.z = -0.22;
+monzaBase.rotation.x = 0.12;
+tankGroup.add(monzaBase);
+
+const monzaLatch = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.012, 0.082), chromeBrightMat);
+monzaLatch.position.set(0.068, -0.172, -0.25);
+monzaLatch.rotation.z = -0.22;
+monzaLatch.rotation.x = 0.12;
+tankGroup.add(monzaLatch);
 
 cockpitGroup.add(tankGroup);
 
-// E. Conjunto de Dirección (Manillar Cónico, Piñas Multi-Botón, Bombas Brembo, Mangueras, Espejos y Guantes)
+// E. Manillar Ancho Scrambler con Barra Transversal, Pad Acolchado, Cubrepuños y Espejos Redondos
 const steeringAssembly = new THREE.Group();
-steeringAssembly.position.set(0, -0.135, -0.49);
+steeringAssembly.position.set(0, -0.115, -0.45);
 
-const centerBar = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.30, 16), billetAluminumMat);
+// Tubo central del manillar ancho
+const centerBar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.32, 16), matteBlackMat);
 centerBar.rotation.z = Math.PI / 2;
 steeringAssembly.add(centerBar);
+
+// Soportes verticales y Barra Transversal de Refuerzo (Scrambler Crossbar)
+[-0.13, 0.13].forEach(bx => {
+  const clampStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.055, 10), brushedAluminumMat);
+  clampStrut.position.set(bx, 0.028, 0);
+  steeringAssembly.add(clampStrut);
+});
+
+const crossBarTube = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.30, 12), matteBlackMat);
+crossBarTube.rotation.z = Math.PI / 2;
+crossBarTube.position.set(0, 0.052, 0);
+steeringAssembly.add(crossBarTube);
+
+// Protector acolchado cilíndrico en la barra transversal (Crossbar Roll Pad en cuero/espuma)
+const crossBarPad = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.21, 20), vintageLeatherMat);
+crossBarPad.rotation.z = Math.PI / 2;
+crossBarPad.position.set(0, 0.052, 0);
+steeringAssembly.add(crossBarPad);
+
+// Costuras / anillos del protector acolchado
+[-0.085, 0.085].forEach(px => {
+  const padRing = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.008, 16), matteBlackMat);
+  padRing.rotation.z = Math.PI / 2;
+  padRing.position.set(px, 0.052, 0);
+  steeringAssembly.add(padRing);
+});
 
 const mirrorReflTex = createMirrorReflectionTexture();
 const mirrorGlassMat = new THREE.MeshStandardMaterial({
@@ -1192,147 +1296,142 @@ const mirrorGlassMat = new THREE.MeshStandardMaterial({
 function createHandlebarSide(isLeft) {
   const s = isLeft ? -1 : 1;
   const sideGroup = new THREE.Group();
-  sideGroup.position.set(s * 0.14, 0, 0);
-  sideGroup.rotation.y = s * -0.16;
-  sideGroup.rotation.z = s * -0.06;
+  sideGroup.position.set(s * 0.15, 0.015, 0);
+  // Manillar Scrambler más ancho y erguido
+  sideGroup.rotation.y = s * -0.11;
+  sideGroup.rotation.z = s * 0.04;
 
   // Tubo lateral del manillar
-  const barTube = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.015, 0.26, 16), darkTitaniumMat);
+  const barTube = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.014, 0.28, 16), matteBlackMat);
   barTube.rotation.z = Math.PI / 2;
-  barTube.position.x = s * 0.13;
+  barTube.position.x = s * 0.14;
   sideGroup.add(barTube);
 
-  // Piña de conmutadores redondeada con botones detallados
+  // Piña de conmutadores clásica en aluminio y negro con botones retro
   const podGroup = new THREE.Group();
-  podGroup.position.set(s * 0.072, 0.004, 0.004);
-  const podMain = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.052, 16), matteBlackMat);
+  podGroup.position.set(s * 0.075, 0.002, 0.004);
+  const podMain = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.030, 0.048, 16), darkTitaniumMat);
   podMain.rotation.z = Math.PI / 2;
   podGroup.add(podMain);
 
-  // Interruptor rojo (Kill Switch / Arranque)
   const redSw = new THREE.Mesh(
     new THREE.BoxGeometry(0.016, 0.012, 0.016),
-    new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.35 })
+    new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 })
   );
-  redSw.position.set(0, 0.028, 0.008);
+  redSw.position.set(0, 0.027, 0.006);
   podGroup.add(redSw);
 
-  // Botón azul (Luces / Modo) y amarillo (Guiños)
-  const blueBtn = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.010, 0.012),
-    new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 })
-  );
-  blueBtn.position.set(s * -0.012, 0.012, 0.026);
-  podGroup.add(blueBtn);
-
-  const yellowBtn = new THREE.Mesh(
-    new THREE.BoxGeometry(0.014, 0.009, 0.012),
-    new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.4 })
-  );
-  yellowBtn.position.set(s * 0.010, -0.008, 0.028);
-  podGroup.add(yellowBtn);
+  const metalToggle = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.014, 10), chromeBrightMat);
+  metalToggle.rotation.x = Math.PI / 2;
+  metalToggle.position.set(s * 0.008, -0.006, 0.028);
+  podGroup.add(metalToggle);
 
   sideGroup.add(podGroup);
 
-  // Bomba Radial de Freno / Embrague y Cable Mallado Hidráulico
-  const masterCyl = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.032, 0.035), darkTitaniumMat);
-  masterCyl.position.set(s * 0.11, 0.012, -0.022);
+  // Bomba de Freno / Embrague y Cable Mallado
+  const masterCyl = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.030, 0.034), matteBlackMat);
+  masterCyl.position.set(s * 0.11, 0.010, -0.022);
   sideGroup.add(masterCyl);
 
-  // Manguera hidráulica mallada que baja hacia la horquilla
   const hoseCurve = new THREE.QuadraticBezierCurve3(
     new THREE.Vector3(s * 0.10, 0.005, -0.035),
-    new THREE.Vector3(s * 0.04, -0.03, -0.055),
-    new THREE.Vector3(s * 0.01, -0.12, -0.02)
+    new THREE.Vector3(s * 0.03, -0.04, -0.055),
+    new THREE.Vector3(s * 0.00, -0.14, -0.02)
   );
   const hoseGeo = new THREE.TubeGeometry(hoseCurve, 12, 0.0045, 8, false);
   const hoseMesh = new THREE.Mesh(hoseGeo, matteBlackMat);
   sideGroup.add(hoseMesh);
 
-  // Puño de goma con relieve y anillo de aluminio
-  const gripRing = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.012, 16), goldAnodizedMat);
-  gripRing.rotation.z = Math.PI / 2;
-  gripRing.position.x = s * 0.115;
-  sideGroup.add(gripRing);
-
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.13, 20), matteBlackMat);
+  // Puño abombado tipo barril (Barrel Grip clásico con textura)
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.020, 0.135, 20), rubberPadMat);
   grip.rotation.z = Math.PI / 2;
-  grip.position.x = s * 0.182;
+  grip.position.x = s * 0.19;
   sideGroup.add(grip);
 
-  // Contrapeso CNC en el extremo del manillar
-  const barEnd = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.016, 0.028, 16), goldAnodizedMat);
+  // Cubrepuños Scrambler (Handguard con alma de aluminio y deflector negro)
+  const handguardShield = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.058, 0.012), matteBlackMat);
+  handguardShield.position.set(s * 0.19, 0.004, -0.068);
+  handguardShield.rotation.y = s * 0.18;
+  sideGroup.add(handguardShield);
+
+  const handguardBar = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.012, 0.016), brushedAluminumMat);
+  handguardBar.position.set(s * 0.19, 0.004, -0.072);
+  handguardBar.rotation.y = s * 0.18;
+  sideGroup.add(handguardBar);
+
+  // Contrapeso cromado en el extremo del manillar
+  const barEnd = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.018, 0.024, 16), chromeBrightMat);
   barEnd.rotation.z = Math.PI / 2;
-  barEnd.position.x = s * 0.258;
+  barEnd.position.x = s * 0.268;
   sideGroup.add(barEnd);
 
-  // Maneta articulada Brembo con puntera perforada
+  // Maneta articulada en aluminio cepillado
   const leverPivot = new THREE.Group();
   leverPivot.position.set(s * 0.11, 0.0, -0.028);
-  const leverBlade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.009, 0.014), billetAluminumMat);
-  leverBlade.position.set(s * 0.072, 0, -0.022);
-  leverBlade.rotation.y = s * 0.20;
+  const leverBlade = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.009, 0.014), brushedAluminumMat);
+  leverBlade.position.set(s * 0.070, 0, -0.020);
+  leverBlade.rotation.y = s * 0.18;
   leverPivot.add(leverBlade);
 
-  const leverTip = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 10), goldAnodizedMat);
-  leverTip.position.set(s * 0.145, 0, -0.036);
-  leverPivot.add(leverTip);
+  const leverBall = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 10), chromeBrightMat);
+  leverBall.position.set(s * 0.142, 0, -0.033);
+  leverPivot.add(leverBall);
   sideGroup.add(leverPivot);
 
-  // Espejo Retrovisor Aerodinámico con Reflejo de Ruta Realista
-  const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.16, 10), matteBlackMat);
-  mirrorArm.position.set(s * 0.115, 0.078, -0.018);
-  mirrorArm.rotation.z = s * -0.42;
-  sideGroup.add(mirrorArm);
+  // Espejo Retrovisor REDONDO Clásico (Estilo Triumph Scrambler 400 X / Bear 650)
+  const stemCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(s * 0.105, 0.02, -0.015),
+    new THREE.Vector3(s * 0.145, 0.11, -0.020),
+    new THREE.Vector3(s * 0.205, 0.165, -0.025)
+  );
+  const mirrorStem = new THREE.Mesh(new THREE.TubeGeometry(stemCurve, 12, 0.0055, 10, false), chromeBrightMat);
+  sideGroup.add(mirrorStem);
 
   const mirrorHead = new THREE.Group();
-  mirrorHead.position.set(s * 0.185, 0.145, -0.028);
-  mirrorHead.rotation.y = s * -0.26;
+  mirrorHead.position.set(s * 0.215, 0.172, -0.025);
+  mirrorHead.rotation.y = s * -0.22;
 
-  const mirrorCase = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.068, 0.024), carbonFiberMat);
-  mirrorHead.add(mirrorCase);
+  // Carcasa redonda trasera en negro satinado + aro cromado
+  const roundCase = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.052, 0.016, 32), matteBlackMat);
+  roundCase.rotation.x = Math.PI / 2;
+  mirrorHead.add(roundCase);
 
-  const mirrorRim = new THREE.Mesh(new THREE.BoxGeometry(0.140, 0.072, 0.018), matteBlackMat);
-  mirrorRim.position.z = 0.002;
-  mirrorHead.add(mirrorRim);
+  const roundRim = new THREE.Mesh(new THREE.TorusGeometry(0.057, 0.004, 12, 32), chromeBrightMat);
+  roundRim.position.z = 0.007;
+  mirrorHead.add(roundRim);
 
-  const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.124, 0.058), mirrorGlassMat);
-  mirrorGlass.position.z = 0.013;
-  mirrorHead.add(mirrorGlass);
+  // Cristal circular con reflejo vial
+  const roundGlass = new THREE.Mesh(new THREE.CircleGeometry(0.055, 32), mirrorGlassMat);
+  roundGlass.position.z = 0.009;
+  mirrorHead.add(roundGlass);
+
   sideGroup.add(mirrorHead);
 
-  // Mano del Piloto con Guante Deportivo de Cuero, Nudillos de Carbono y Dedos sobre la Maneta
+  // Mano del Piloto con Guante Clásico Scrambler de Cuero Marrón Cognac
   const handGroup = new THREE.Group();
-  handGroup.position.set(s * 0.18, 0.006, 0.01);
+  handGroup.position.set(s * 0.19, 0.006, 0.01);
 
-  const leatherMat = new THREE.MeshStandardMaterial({
-    color: 0x161922,
-    normalMap: terrainMaps.norm,
-    normalScale: new THREE.Vector2(0.22, 0.22),
-    roughness: 0.52,
-    metalness: 0.15
-  });
-
-  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.044, 18, 14), leatherMat);
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.044, 18, 14), vintageLeatherMat);
   palm.scale.set(1.15, 0.62, 1.08);
   handGroup.add(palm);
 
-  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 12), carbonFiberMat);
-  knuckle.scale.set(1.12, 0.42, 0.58);
-  knuckle.position.set(0, 0.021, -0.012);
-  handGroup.add(knuckle);
+  // Costuras acolchadas sobre los nudillos del guante clásico
+  const knucklePad = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 12), vintageLeatherMat);
+  knucklePad.scale.set(1.12, 0.40, 0.55);
+  knucklePad.position.set(0, 0.020, -0.010);
+  handGroup.add(knucklePad);
 
-  // Dedos índice y medio apoyados sobre la maneta + anular y meñique en el puño
   for (let f = 0; f < 4; f++) {
-    const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0072, 0.056, 10), leatherMat);
+    const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0072, 0.056, 10), vintageLeatherMat);
     const onLever = f < 2;
     finger.position.set((f - 1.5) * 0.018, onLever ? 0.004 : -0.004, onLever ? -0.044 : -0.036);
     finger.rotation.x = onLever ? Math.PI / 2.2 : Math.PI / 2.6;
     handGroup.add(finger);
   }
 
-  // Manga de campera de cuero con cierre metálico
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.058, 0.38, 16), leatherMat);
+  // Manga de campera encerada oscura tipo Barbour / Scrambler
+  const jacketMat = new THREE.MeshStandardMaterial({ color: 0x1c211e, roughness: 0.78, metalness: 0.08 });
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.060, 0.38, 16), jacketMat);
   sleeve.position.set(s * 0.02, -0.11, 0.17);
   sleeve.rotation.x = Math.PI / 2.9;
   sleeve.rotation.z = s * -0.12;
@@ -1348,16 +1447,16 @@ const rightSideBar = createHandlebarSide(false);
 steeringAssembly.add(leftSideBar.sideGroup);
 steeringAssembly.add(rightSideBar.sideGroup);
 
-// Depósito de líquido de freno Brembo traslúcido con soporte metálico
+// Depósito cilíndrico de líquido de freno en el manillar derecho
 const fluidCup = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.017, 0.017, 0.034, 16),
-  new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85, roughness: 0.1, clearcoat: 1.0 })
+  new THREE.CylinderGeometry(0.016, 0.016, 0.030, 16),
+  new THREE.MeshPhysicalMaterial({ color: 0xd97706, transparent: true, opacity: 0.85, roughness: 0.1, clearcoat: 1.0 })
 );
-fluidCup.position.set(0.23, 0.054, -0.022);
+fluidCup.position.set(0.24, 0.058, -0.020);
 steeringAssembly.add(fluidCup);
 
-const fluidCap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.008, 16), matteBlackMat);
-fluidCap.position.set(0.23, 0.073, -0.022);
+const fluidCap = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.008, 16), brushedAluminumMat);
+fluidCap.position.set(0.24, 0.075, -0.020);
 steeringAssembly.add(fluidCap);
 
 cockpitGroup.add(steeringAssembly);
@@ -1546,12 +1645,13 @@ function updateHandlingPhysics(dt) {
   const vib = (simState.rpm / simState.maxRpm) * 0.004 + (simState.onRumble ? 0.022 : 0) + speedWindBuffet;
 
   camera.position.x = roadOri.x + (perpX * simState.laneOffset) + (Math.random() - 0.5) * vib;
-  camera.position.y = roadOri.y + 1.38 + (Math.random() - 0.5) * vib;
+  // Vista del piloto más alta (postura erguida de Scrambler clásica)
+  camera.position.y = roadOri.y + 1.66 + (Math.random() - 0.5) * vib;
   camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
 
   camera.rotation.set(0, 0, 0);
   camera.rotation.y = roadOri.yaw + simState.headLookApex;
-  camera.rotation.x = roadOri.pitch + simState.pitchSuspension;
+  camera.rotation.x = roadOri.pitch - 0.035 + simState.pitchSuspension;
   camera.rotation.z = -simState.leanAngle * 0.74 + roadOri.roll;
 
   camera.fov = 64 + (simState.speed / simState.maxSpeed) * 11;
@@ -1781,117 +1881,161 @@ function updateWorldMeshes() {
 }
 
 // ============================================================================
-// 13. PANTALLA DIGITAL TFT SUPERBIKE (CON TELEMETRÍA E INDICADOR DE INCLINACIÓN)
+// 13. RELOJ CIRCULAR SCRAMBLER CLÁSICO-MODERNO (ESTILO TRIUMPH 400 X / BEAR 650)
 // ============================================================================
 function updateTFT() {
   const c = dashCtx;
-  const bg = c.createLinearGradient(0, 0, 0, 512);
-  bg.addColorStop(0, '#040814');
-  bg.addColorStop(1, '#091124');
+  const cx = 256;
+  const cy = 256;
+
+  c.clearRect(0, 0, 512, 512);
+
+  // Fondo circular negro satinado con halo cálido vintage
+  const bg = c.createRadialGradient(cx, cy, 20, cx, cy, 250);
+  bg.addColorStop(0, '#141820');
+  bg.addColorStop(0.78, '#0c0f14');
+  bg.addColorStop(1, '#05070a');
   c.fillStyle = bg;
-  c.fillRect(0, 0, 1024, 512);
+  c.beginPath();
+  c.arc(cx, cy, 250, 0, Math.PI * 2);
+  c.fill();
 
-  // Bisel interior luminoso
-  c.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-  c.lineWidth = 6;
-  c.strokeRect(12, 12, 1000, 488);
+  // Anillo exterior dorado/crema estilo reloj británico clásico
+  c.strokeStyle = '#d4af37';
+  c.lineWidth = 4;
+  c.beginPath();
+  c.arc(cx, cy, 236, 0, Math.PI * 2);
+  c.stroke();
 
-  // Barra superior de Shift Lights (LEDs de corte de RPM)
-  const isShiftWarning = simState.rpm >= 8200;
-  for (let i = 0; i < 9; i++) {
-    const lx = 210 + (i * 68);
-    let ledColor = '#1e293b';
-    if (simState.rpm > 5500 && i < 3) ledColor = '#22c55e';
-    if (simState.rpm > 6800 && i >= 3 && i < 6) ledColor = '#f59e0b';
-    if (simState.rpm > 7800 && i >= 6) ledColor = '#ef4444';
-    if (isShiftWarning) {
-      ledColor = (performance.now() % 140 < 70) ? '#38bdf8' : '#ef4444';
-    }
-    c.fillStyle = ledColor;
+  // Escala radial de velocímetro analógico (0 a 200 km/h)
+  const startAng = Math.PI * 0.75; // 135°
+  const endAng = Math.PI * 2.25;   // 405°
+  const totalSweep = endAng - startAng;
+
+  for (let s = 0; s <= 200; s += 5) {
+    const ratio = s / 200;
+    const ang = startAng + ratio * totalSweep;
+    const isMajor = (s % 20 === 0);
+    const isMid = (s % 10 === 0);
+
+    const rOuter = 228;
+    const rInner = isMajor ? 202 : (isMid ? 212 : 218);
+
+    c.strokeStyle = isMajor ? '#f5f0e1' : '#94a3b8';
+    c.lineWidth = isMajor ? 4 : 2;
     c.beginPath();
-    c.roundRect(lx, 26, 52, 18, 5);
-    c.fill();
+    c.moveTo(cx + Math.cos(ang) * rInner, cy + Math.sin(ang) * rInner);
+    c.lineTo(cx + Math.cos(ang) * rOuter, cy + Math.sin(ang) * rOuter);
+    c.stroke();
+
+    if (isMajor) {
+      const rText = 174;
+      c.fillStyle = '#f5f0e1';
+      c.font = '700 22px "Chakra Petch", sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(s.toString(), cx + Math.cos(ang) * rText, cy + Math.sin(ang) * rText);
+    }
   }
 
-  // Testigos de giro
+  // Arco de RPM digital interior (Tripper / Scrambler LCD)
+  const rpmRatio = Math.min(1, simState.rpm / simState.maxRpm);
+  c.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+  c.lineWidth = 12;
+  c.beginPath();
+  c.arc(cx, cy, 134, startAng, endAng);
+  c.stroke();
+
+  const rpmColor = simState.rpm >= 8200 ? '#ef4444' : (simState.rpm >= 6500 ? '#f59e0b' : '#eab308');
+  c.strokeStyle = rpmColor;
+  c.lineWidth = 12;
+  c.beginPath();
+  c.arc(cx, cy, 134, startAng, startAng + totalSweep * rpmRatio);
+  c.stroke();
+
+  // Pantalla circular LCD central
+  c.fillStyle = '#090d14';
+  c.beginPath();
+  c.arc(cx, cy, 120, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = 'rgba(212, 175, 55, 0.35)';
+  c.lineWidth = 2;
+  c.stroke();
+
+  // Logo superior clásico en el reloj
+  c.fillStyle = '#d4af37';
+  c.font = '700 15px "Chakra Petch", sans-serif';
+  c.textAlign = 'center';
+  c.fillText('SCRAMBLER 650', cx, cy - 78);
+
+  // Testigos luminosos clásicos (Guiños y Neutral)
   if (keys.steerLeft && performance.now() % 480 < 240) {
     c.fillStyle = '#22c55e';
-    c.font = '700 46px sans-serif';
-    c.fillText('◀', 90, 58);
+    c.font = '700 26px sans-serif';
+    c.fillText('◀', cx - 72, cy - 42);
   }
   if (keys.steerRight && performance.now() % 480 < 240) {
     c.fillStyle = '#22c55e';
-    c.font = '700 46px sans-serif';
-    c.fillText('▶', 930, 58);
+    c.font = '700 26px sans-serif';
+    c.fillText('▶', cx + 72, cy - 42);
   }
 
-  // Indicador de Marcha Enorme (Izquierda)
-  c.fillStyle = '#0f172a';
+  // Indicador de Marcha (Gear) grande en el centro superior del LCD
+  const gText = simState.gear === 0 ? 'N' : simState.gear.toString();
+  c.fillStyle = simState.gear === 0 ? '#22c55e' : '#f59e0b';
+  c.font = '700 64px "Chakra Petch", monospace';
+  c.fillText(gText, cx, cy - 22);
+
+  // Velocidad digital de respaldo + KM/H
+  c.fillStyle = '#f5f0e1';
+  c.font = '700 34px "Share Tech Mono", monospace';
+  c.fillText(`${Math.round(simState.speed)} KM/H`, cx, cy + 36);
+
+  // Datos de Fuel, Temp y Odómetro en la base del LCD
+  c.fillStyle = simState.fuelLiters < 4 ? '#ef4444' : '#cbd5e1';
+  c.font = '700 18px "Share Tech Mono", monospace';
+  c.fillText(`FUEL ${simState.fuelLiters.toFixed(1)}L  |  ${Math.round(simState.engineTemp)}°C`, cx, cy + 68);
+
+  c.fillStyle = '#94a3b8';
+  c.font = '700 16px "Share Tech Mono", monospace';
+  c.fillText(`ODO ${simState.odometer.toFixed(1)} KM`, cx, cy + 94);
+
+  // Aguja analógica iluminada en rojo/naranja con contrapeso y centro de aluminio cepillado
+  const speedClamped = Math.min(200, Math.max(0, simState.speed));
+  const needleAng = startAng + (speedClamped / 200) * totalSweep;
+
+  c.save();
+  c.translate(cx, cy);
+  c.rotate(needleAng);
+
+  // Sombra de la aguja
+  c.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+  c.lineWidth = 8;
   c.beginPath();
-  c.roundRect(50, 95, 210, 245, 16);
-  c.fill();
-  c.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-  c.lineWidth = 3;
+  c.moveTo(-32, 4);
+  c.lineTo(212, 4);
   c.stroke();
 
-  c.fillStyle = simState.gear === 0 ? '#22c55e' : '#38bdf8';
-  c.font = '700 165px "Chakra Petch", monospace';
-  c.textAlign = 'center';
-  const gText = simState.gear === 0 ? 'N' : simState.gear;
-  c.fillText(gText, 155, 265);
-  c.font = '700 26px "Chakra Petch"';
-  c.fillStyle = '#94a3b8';
-  c.fillText('GEAR', 155, 318);
+  // Cuerpo de la aguja
+  c.strokeStyle = '#ef4444';
+  c.lineWidth = 6;
+  c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(-34, 0);
+  c.lineTo(214, 0);
+  c.stroke();
 
-  // Velocímetro Digital Central
-  c.fillStyle = '#ffffff';
-  c.font = '700 205px "Share Tech Mono", monospace';
-  c.fillText(Math.round(simState.speed).toString().padStart(3, ' '), 515, 265);
-  c.font = '700 34px "Chakra Petch"';
-  c.fillStyle = '#38bdf8';
-  c.fillText('KM / H', 515, 322);
-
-  // Telemetría Derecha: Combustible, Temperatura y Ángulo de Inclinación
-  c.textAlign = 'right';
-  c.font = '700 32px "Share Tech Mono"';
-  c.fillStyle = simState.fuelLiters < 4 ? '#ef4444' : '#e2e8f0';
-  c.fillText(`FUEL ${simState.fuelLiters.toFixed(1)}L`, 965, 135);
-
-  c.fillStyle = simState.engineTemp > 105 ? '#ef4444' : '#e2e8f0';
-  c.fillText(`TEMP ${Math.round(simState.engineTemp)}°C`, 965, 195);
-
-  const leanDeg = Math.round(Math.abs(simState.leanAngle) * (180 / Math.PI));
-  c.fillStyle = '#f59e0b';
-  c.fillText(`LEAN  ${leanDeg}°`, 965, 255);
-
-  c.fillStyle = '#94a3b8';
-  c.font = '700 26px "Share Tech Mono"';
-  c.fillText(`ODO ${simState.odometer.toFixed(1)}km`, 965, 315);
-
-  // Barra de Tacómetro RPM inferior con escala numérica
-  const rpmRatio = Math.min(1, simState.rpm / simState.maxRpm);
+  // Centro de aluminio del eje de la aguja
+  c.fillStyle = '#cbd5e1';
+  c.beginPath();
+  c.arc(0, 0, 18, 0, Math.PI * 2);
+  c.fill();
   c.fillStyle = '#1e293b';
   c.beginPath();
-  c.roundRect(55, 385, 914, 48, 8);
+  c.arc(0, 0, 8, 0, Math.PI * 2);
   c.fill();
 
-  const barGrad = c.createLinearGradient(55, 0, 969, 0);
-  barGrad.addColorStop(0, '#0284c7');
-  barGrad.addColorStop(0.75, '#38bdf8');
-  barGrad.addColorStop(0.85, '#f59e0b');
-  barGrad.addColorStop(1.0, '#ef4444');
-  c.fillStyle = barGrad;
-  c.beginPath();
-  c.roundRect(55, 385, Math.max(12, 914 * rpmRatio), 48, 8);
-  c.fill();
-
-  // Escala 1 a 10 (x1000 RPM)
-  c.fillStyle = '#94a3b8';
-  c.font = '700 22px "Chakra Petch"';
-  c.textAlign = 'center';
-  for (let r = 1; r <= 10; r++) {
-    c.fillText(r.toString(), 55 + (r * 91.4) - 10, 468);
-  }
+  c.restore();
 
   dashTexture.needsUpdate = true;
 }
