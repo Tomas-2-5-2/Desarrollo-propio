@@ -556,6 +556,9 @@ function createChevronSignTexture() {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#facc15';
   ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(3, 3, 122, 122);
   ctx.fillStyle = '#0f172a';
   ctx.beginPath();
   ctx.moveTo(32, 18);
@@ -566,6 +569,119 @@ function createChevronSignTexture() {
   ctx.lineTo(68, 64);
   ctx.closePath();
   ctx.fill();
+  return new THREE.CanvasTexture(c);
+}
+
+// Cartel vial clásico de Ruta Nacional 40 con desgaste
+function createRoute40SignTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 160;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#065f46';
+  ctx.fillRect(0, 0, 128, 160);
+  ctx.strokeStyle = '#f8fafc';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(6, 6, 116, 148);
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '700 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('RUTA NAC.', 64, 38);
+  ctx.font = '700 54px sans-serif';
+  ctx.fillText('40', 64, 96);
+  ctx.font = '700 18px monospace';
+  ctx.fillText('KM 2140', 64, 134);
+
+  // Polvo vial en la base del cartel
+  const grd = ctx.createLinearGradient(0, 110, 0, 160);
+  grd.addColorStop(0, 'rgba(120, 95, 70, 0)');
+  grd.addColorStop(1, 'rgba(120, 95, 70, 0.45)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 110, 128, 50);
+
+  return new THREE.CanvasTexture(c);
+}
+
+// Mapa de normales animado para olas y reflejos solares en el lago glaciar
+function createWaterNormalMap() {
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const idx = (y * size + x) * 4;
+      const nx = Math.sin(x * 0.14 + y * 0.06) * 0.5 + Math.cos(x * 0.08 - y * 0.18) * 0.5;
+      const ny = Math.cos(y * 0.16 - x * 0.05) * 0.5 + Math.sin(y * 0.22 + x * 0.11) * 0.5;
+      d[idx]     = Math.min(255, Math.max(0, 128 + nx * 38));
+      d[idx + 1] = Math.min(255, Math.max(0, 128 + ny * 38));
+      d[idx + 2] = 245;
+      d[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(55, 55);
+  return tex;
+}
+
+// Textura de cuero bordado para el protector de barra transversal (Crossbar Pad Scrambler)
+function createCrossbarPadTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#3b2314';
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Grano de cuero y desgaste central
+  for (let i = 0; i < 3500; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(85, 52, 30, 0.28)' : 'rgba(18, 10, 5, 0.32)';
+    ctx.fillRect(Math.random() * 512, Math.random() * 256, 3, 2);
+  }
+
+  // Costuras horizontales color crema
+  ctx.strokeStyle = '#d6c7b2';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, 36); ctx.lineTo(512, 36);
+  ctx.moveTo(0, 220); ctx.lineTo(512, 220);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Inscripción clásica estampada en el centro del pad mirando al piloto
+  ctx.fillStyle = '#efe8d5';
+  ctx.font = '700 28px "Chakra Petch", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SCRAMBLER  //  650 TWIN', 256, 128);
+
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
+// Halo luminoso suave para faros del tráfico y destello solar
+function createLightGlowTexture(colorStop0, colorStop1) {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 2, 64, 64, 62);
+  g.addColorStop(0, colorStop0);
+  g.addColorStop(0.35, colorStop1);
+  g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(c);
 }
 
@@ -786,18 +902,97 @@ const terrainColAttr = terrainGeo.attributes.color;
 terrainPosAttr.setUsage(THREE.DynamicDrawUsage);
 terrainColAttr.setUsage(THREE.DynamicDrawUsage);
 
-// C. Lago Glaciar en el fondo del valle izquierdo
+// C. Lago Glaciar con Olas Animadas y Reflejos Dorados en el fondo del valle izquierdo
+const waterNormTex = createWaterNormalMap();
 const waterGeo = new THREE.PlaneGeometry(3600, 3600);
 const waterMat = new THREE.MeshStandardMaterial({
-  color: 0x0e5a6f,
-  roughness: 0.06,
-  metalness: 0.92,
-  envMapIntensity: 1.9
+  color: 0x0d586e,
+  normalMap: waterNormTex,
+  normalScale: new THREE.Vector2(0.42, 0.42),
+  roughness: 0.08,
+  metalness: 0.90,
+  envMapIntensity: 2.1
 });
 const waterMesh = new THREE.Mesh(waterGeo, waterMat);
 waterMesh.rotation.x = -Math.PI / 2;
 waterMesh.position.y = -6.5;
 scene.add(waterMesh);
+
+// C2. Cordillera de los Andes Panorámica 360° en el Horizonte Lejano (Picos Nevados y Granito)
+function createDistantMountainRange() {
+  const radSegs = 96;
+  const heightSegs = 14;
+  const geo = new THREE.CylinderGeometry(1650, 2100, 540, radSegs, heightSegs, true);
+  const pos = geo.attributes.position;
+  const cols = new Float32Array(pos.count * 3);
+
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i);
+    const vy = pos.getY(i);
+    const vz = pos.getZ(i);
+    const ang = Math.atan2(vz, vx);
+    // Altura normalizada de la base (0) a la cumbre (1)
+    const hRatio = (vy + 270) / 540;
+
+    // Perfil cordillerano dentado tipo Fitz Roy / Andes Patagónicos
+    const ridge1 = Math.abs(Math.sin(ang * 7.0 + 0.5)) * 1.15;
+    const ridge2 = Math.abs(Math.cos(ang * 15.0 - 1.2)) * 0.62;
+    const ridge3 = Math.sin(ang * 29.0) * 0.25;
+    const peakProfile = 0.38 + ridge1 * 0.55 + ridge2 * 0.35 + ridge3 * 0.15;
+
+    const newY = -120 + Math.pow(hRatio, 1.25) * 520 * peakProfile;
+    const radNoise = 1.0 + (noise2D(Math.cos(ang) * 4.5, hRatio * 6.0) - 0.5) * 0.12 * hRatio;
+    pos.setXYZ(i, vx * radNoise, newY, vz * radNoise);
+
+    // Colores por altitud: base boscosa oscura -> granito gris azulado -> nieve eterna iluminada por el sol
+    let r = 0.18, g = 0.24, b = 0.22;
+    if (newY > 215) {
+      // Cumbres nevadas con tinte cálido de hora dorada
+      r = 0.94; g = 0.93; b = 0.95;
+    } else if (newY > 110) {
+      // Paredones de granito andino con vetas de nieve
+      const snowMix = smoothstep(110, 215, newY);
+      r = 0.34 + snowMix * 0.56;
+      g = 0.38 + snowMix * 0.52;
+      b = 0.44 + snowMix * 0.48;
+    } else if (newY > 30) {
+      r = 0.26; g = 0.31; b = 0.34;
+    }
+    cols[i * 3]     = r;
+    cols[i * 3 + 1] = g;
+    cols[i * 3 + 2] = b;
+  }
+
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    normalMap: terrainMaps.norm,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughness: 0.88,
+    metalness: 0.05,
+    side: THREE.BackSide
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  return mesh;
+}
+
+const mountainRangeMesh = createDistantMountainRange();
+scene.add(mountainRangeMesh);
+
+// Resplandor Solar Atmosférico (Sun Glare Sprite en dirección al sol)
+const sunGlowTex = createLightGlowTexture('rgba(255, 250, 225, 0.95)', 'rgba(255, 180, 90, 0.32)');
+const sunGlareSprite = new THREE.Sprite(
+  new THREE.SpriteMaterial({
+    map: sunGlowTex,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+);
+sunGlareSprite.scale.set(680, 680, 1);
+scene.add(sunGlareSprite);
 
 // D. Guardarraíl Metálico 3D Acanalado con Óxido y Barro Vial
 const guardrailGeo = new THREE.PlaneGeometry(0.44, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
@@ -816,7 +1011,7 @@ scene.add(guardrailMesh);
 const guardrailPosAttr = guardrailGeo.attributes.position;
 guardrailPosAttr.setUsage(THREE.DynamicDrawUsage);
 
-// E. Tachas Reflectantes, Postes, Arbustos Secos (Coirón) y Carteles Viales Desgastados
+// E. Tachas Reflectantes, Postes Telegráficos, Arbustos Secos (Coirón) y Carteles de Ruta 40
 const catEyesGroup = new THREE.Group();
 const catEyeGeo = new THREE.BoxGeometry(0.16, 0.035, 0.22);
 const catEyeMat = new THREE.MeshStandardMaterial({
@@ -843,6 +1038,11 @@ const chevronMat = new THREE.MeshStandardMaterial({
   map: createChevronSignTexture(),
   roughness: 0.35,
   metalness: 0.25
+});
+const route40Mat = new THREE.MeshStandardMaterial({
+  map: createRoute40SignTexture(),
+  roughness: 0.38,
+  metalness: 0.22
 });
 
 const roadDetails = [];
@@ -882,7 +1082,27 @@ for (let i = 0; i < 45; i++) {
   shrub.receiveShadow = true;
   g.add(shrub);
 
-  // Cada 5 postes añadimos un cartel vial de curva (Chevron amarillo/negro)
+  // Postes telegráficos de madera antiguos al costado derecho que proyectan sombras largas en el asfalto
+  if (i % 4 === 0) {
+    const telePole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 6.8, 10), woodPostMat);
+    telePole.position.set(ROAD_WIDTH / 2 + 2.8, 3.3, -1.5);
+    telePole.castShadow = true;
+    telePole.receiveShadow = true;
+    g.add(telePole);
+
+    const crossArm = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.10, 0.10), woodPostMat);
+    crossArm.position.set(ROAD_WIDTH / 2 + 2.8, 6.1, -1.5);
+    crossArm.castShadow = true;
+    g.add(crossArm);
+
+    [-0.55, -0.20, 0.20, 0.55].forEach(ix => {
+      const insulator = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.14, 8), reflWhiteMat);
+      insulator.position.set(ROAD_WIDTH / 2 + 2.8 + ix, 6.22, -1.5);
+      g.add(insulator);
+    });
+  }
+
+  // Carteles viales de curva (Chevron amarillo/negro) y Carteles de Ruta Nacional 40
   if (i % 5 === 0) {
     const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8), guardrailMat);
     signPole.position.set(ROAD_WIDTH / 2 + 1.45, 0.9, 0);
@@ -893,6 +1113,16 @@ for (let i = 0; i < 45; i++) {
     signBoard.position.set(ROAD_WIDTH / 2 + 1.45, 1.65, 0);
     signBoard.castShadow = true;
     g.add(signBoard);
+  } else if (i % 9 === 0) {
+    const r40Pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 2.2, 8), guardrailMat);
+    r40Pole.position.set(ROAD_WIDTH / 2 + 1.65, 1.1, 0);
+    r40Pole.castShadow = true;
+    g.add(r40Pole);
+
+    const r40Board = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.02, 0.04), route40Mat);
+    r40Board.position.set(ROAD_WIDTH / 2 + 1.65, 1.95, 0);
+    r40Board.castShadow = true;
+    g.add(r40Board);
   }
 
   catEyesGroup.add(g);
@@ -921,7 +1151,7 @@ const dustParticles = new THREE.Points(dustGeo, dustMat);
 scene.add(dustParticles);
 
 // ============================================================================
-// 7. BOSQUE ALPINO 3D TEXTURIZADO Y AFLORAMIENTOS ROCOSOS
+// 7. BOSQUE PATAGÓNICO MULTI-ESPECIE (PINOS Y LENGAS OTOÑALES) Y ROCAS
 // ============================================================================
 const forestGroup = new THREE.Group();
 
@@ -940,6 +1170,16 @@ const pineFoliageMat2 = new THREE.MeshStandardMaterial({
   color: 0x9ec2a6,
   map: pineNeedleTex,
   roughness: 0.74
+});
+const autumnLengaMat1 = new THREE.MeshStandardMaterial({
+  color: 0xd97706, // Dorado ocre otoñal patagónico
+  map: pineNeedleTex,
+  roughness: 0.78
+});
+const autumnLengaMat2 = new THREE.MeshStandardMaterial({
+  color: 0xb45309, // Ámbar rojizo de montaña
+  map: pineNeedleTex,
+  roughness: 0.78
 });
 const rockBoulderMat = new THREE.MeshStandardMaterial({
   color: 0x56606b,
@@ -984,6 +1224,41 @@ function createHighDetailPineTree() {
     bough.receiveShadow = true;
     tree.add(bough);
   }
+  return tree;
+}
+
+// Árbol de Lenga / Ñire Patagónico con copa frondosa en tonos ocres y dorados
+function createAutumnLengaTree() {
+  const tree = new THREE.Group();
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.44, 4.4, 9), barkMat);
+  trunk.position.y = 2.2;
+  trunk.castShadow = true;
+  trunk.receiveShadow = true;
+  tree.add(trunk);
+
+  const canopyOffsets = [
+    [0, 5.2, 0, 2.3],
+    [-1.2, 4.5, 0.8, 1.75],
+    [1.3, 4.7, -0.7, 1.8],
+    [0.4, 6.4, 0.5, 1.65],
+    [-0.7, 6.0, -0.8, 1.55]
+  ];
+  canopyOffsets.forEach((c, idx) => {
+    const folGeo = new THREE.DodecahedronGeometry(c[3], 1);
+    const pos = folGeo.attributes.position;
+    for (let v = 0; v < pos.count; v++) {
+      const sc = 0.86 + 0.24 * Math.sin(v * 2.1 + idx);
+      pos.setXYZ(v, pos.getX(v) * sc * 1.15, pos.getY(v) * sc * 0.82, pos.getZ(v) * sc * 1.12);
+    }
+    folGeo.computeVertexNormals();
+    const crown = new THREE.Mesh(folGeo, idx % 2 === 0 ? autumnLengaMat1 : autumnLengaMat2);
+    crown.position.set(c[0], c[1], c[2]);
+    crown.castShadow = true;
+    crown.receiveShadow = true;
+    tree.add(crown);
+  });
+
   return tree;
 }
 
@@ -1032,7 +1307,7 @@ function getTerrainElevationOffset(lateral, wx, wz) {
 const natureObjects = [];
 for (let i = 0; i < 70; i++) {
   const wrapper = new THREE.Group();
-  const tree = createHighDetailPineTree();
+  const tree = (i % 4 === 1) ? createAutumnLengaTree() : createHighDetailPineTree();
   const sc = 0.85 + (i % 5) * 0.22;
   tree.scale.set(sc, sc * (0.95 + (i % 3) * 0.12), sc);
   wrapper.add(tree);
@@ -1064,8 +1339,11 @@ for (let i = 0; i < 70; i++) {
 scene.add(forestGroup);
 
 // ============================================================================
-// 8. TRÁFICO 3D MULTI-PIEZA CON SOMBRAS DE CONTACTO AO Y DESGASTE
+// 8. TRÁFICO 3D MULTI-PIEZA CON HALOS DE LUCES, SOMBRAS AO Y RUEDAS GIRATORIAS
 // ============================================================================
+const headlightFlareTex = createLightGlowTexture('rgba(255, 252, 230, 0.95)', 'rgba(255, 210, 120, 0.35)');
+const taillightFlareTex = createLightGlowTexture('rgba(255, 60, 60, 0.95)', 'rgba(220, 20, 20, 0.35)');
+
 const trafficGroup = new THREE.Group();
 const vehicles = [
   createRealistic3DVehicle('truck', 0xb91c1c, -2.7, 110),
@@ -1097,6 +1375,20 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
   carAo.position.set(0, 0.06, type === 'truck' ? 0.4 : 0);
   group.add(carAo);
 
+  function addLightFlare(x, y, z, isHeadlight, scale) {
+    const sp = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: isHeadlight ? headlightFlareTex : taillightFlareTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    sp.position.set(x, y, z);
+    sp.scale.set(scale, scale, 1);
+    group.add(sp);
+  }
+
   if (type === 'truck') {
     const cab = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.9, 2.6), paintMat);
     cab.position.set(0, 1.85, -3.2);
@@ -1125,7 +1417,12 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
 
     const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.1), headlightMat); fl1.position.set(-0.95, 0.9, -4.52); group.add(fl1);
     const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.1), headlightMat); fl2.position.set(0.95, 0.9, -4.52); group.add(fl2);
+    addLightFlare(-0.95, 0.9, -4.65, true, 1.65);
+    addLightFlare(0.95, 0.9, -4.65, true, 1.65);
+
     const rl = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.1), taillightMat); rl.position.set(0, 0.85, 5.51); group.add(rl);
+    addLightFlare(-0.9, 0.85, 5.65, false, 1.35);
+    addLightFlare(0.9, 0.85, 5.65, false, 1.35);
   } else {
     const isSuv = type === 'suv';
     const w = 1.95;
@@ -1149,33 +1446,56 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
     roof.position.set(0, 0.4 + hBody + cabH - 0.02, isSuv ? 0.25 : 0.1);
     group.add(roof);
 
+    // Barras portaequipaje de techo en SUV y espejos laterales en autos
+    if (isSuv) {
+      [-0.68, 0.68].forEach(rx => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, cabLen * 0.78), darkTrimMat);
+        rail.position.set(rx, 0.4 + hBody + cabH + 0.04, 0.25);
+        group.add(rail);
+      });
+    }
+    [-w * 0.48, w * 0.48].forEach(mx => {
+      const sideMir = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.11, 0.12), paintMat);
+      sideMir.position.set(mx, 0.4 + hBody + 0.12, -0.65);
+      group.add(sideMir);
+    });
+
     const bumper = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, 0.28, l * 1.02), darkTrimMat);
     bumper.position.set(0, 0.42, 0);
     group.add(bumper);
 
     const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.08), headlightMat); fl1.position.set(-w * 0.35, 0.72, -l / 2 - 0.02); group.add(fl1);
     const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.08), headlightMat); fl2.position.set(w * 0.35, 0.72, -l / 2 - 0.02); group.add(fl2);
+    addLightFlare(-w * 0.35, 0.72, -l / 2 - 0.12, true, 1.45);
+    addLightFlare(w * 0.35, 0.72, -l / 2 - 0.12, true, 1.45);
+
     const tailBar = new THREE.Mesh(new THREE.BoxGeometry(w * 0.88, 0.14, 0.08), taillightMat); tailBar.position.set(0, 0.78, l / 2 + 0.02); group.add(tailBar);
+    addLightFlare(-w * 0.34, 0.78, l / 2 + 0.12, false, 1.25);
+    addLightFlare(w * 0.34, 0.78, l / 2 + 0.12, false, 1.25);
   }
 
   const wheelGeo = new THREE.CylinderGeometry(0.40, 0.40, 0.32, 18);
   wheelGeo.rotateZ(Math.PI / 2);
-  const rimGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.34, 12);
+  const rimGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.34, 8);
   rimGeo.rotateZ(Math.PI / 2);
 
   const zOff = type === 'truck' ? 3.2 : 1.45;
   const xOff = type === 'truck' ? 1.25 : 0.96;
+  const wheelMeshes = [];
   [[-xOff, 0.40, -zOff], [xOff, 0.40, -zOff], [-xOff, 0.40, zOff], [xOff, 0.40, zOff]].forEach(pos => {
+    const wGrp = new THREE.Group();
+    wGrp.position.set(...pos);
     const tire = new THREE.Mesh(wheelGeo, darkTrimMat);
-    tire.position.set(...pos);
-    group.add(tire);
+    wGrp.add(tire);
     const rim = new THREE.Mesh(rimGeo, chromeMat);
-    rim.position.set(...pos);
-    group.add(rim);
+    wGrp.add(rim);
+    group.add(wGrp);
+    wheelMeshes.push(wGrp);
   });
 
   return {
     mesh: group,
+    wheels: wheelMeshes,
     type: type,
     speed: type === 'truck' ? 68 : 84,
     laneOffset: laneOffset,
@@ -1304,7 +1624,7 @@ headlightGroup.add(flyscreen);
   headlightGroup.add(amberLens);
 });
 
-// Guardabarros delantero de aluminio cepillado y neumático con tacos Scrambler asomando abajo adelante
+// Guardabarros delantero de aluminio cepillado y neumático con tacos Scrambler giratorio abajo adelante
 const frontFender = new THREE.Mesh(
   new THREE.BoxGeometry(0.13, 0.015, 0.28),
   brushedAluminumMat
@@ -1313,14 +1633,33 @@ frontFender.position.set(0, -0.15, -0.10);
 frontFender.rotation.x = 0.20;
 headlightGroup.add(frontFender);
 
+// Grupo giratorio de la rueda delantera con tacos Scrambler y disco de freno perforado
+const frontWheelSpinGroup = new THREE.Group();
+frontWheelSpinGroup.position.set(0, -0.44, -0.12);
+
 const frontTireCrown = new THREE.Mesh(
-  new THREE.TorusGeometry(0.28, 0.068, 16, 32, Math.PI * 0.75),
+  new THREE.TorusGeometry(0.28, 0.068, 16, 36),
   rubberPadMat
 );
 frontTireCrown.rotation.y = Math.PI / 2;
-frontTireCrown.rotation.z = Math.PI * 0.12;
-frontTireCrown.position.set(0, -0.44, -0.12);
-headlightGroup.add(frontTireCrown);
+frontWheelSpinGroup.add(frontTireCrown);
+
+// Tacos off-road / Scrambler esculpidos alrededor de la banda de rodadura
+for (let k = 0; k < 18; k++) {
+  const ang = (k / 18) * Math.PI * 2;
+  const knob = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.036), rubberPadMat);
+  knob.position.set(0, Math.sin(ang) * 0.342, Math.cos(ang) * 0.342);
+  knob.rotation.x = -ang;
+  frontWheelSpinGroup.add(knob);
+}
+
+// Disco de freno delantero flotante en acero cepillado
+const brakeDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.008, 24), brushedAluminumMat);
+brakeDisc.rotation.z = Math.PI / 2;
+brakeDisc.position.x = -0.065;
+frontWheelSpinGroup.add(brakeDisc);
+
+headlightGroup.add(frontWheelSpinGroup);
 
 cockpitGroup.add(headlightGroup);
 
@@ -1373,7 +1712,7 @@ dashGroup.add(gaugeGlass);
 
 cockpitGroup.add(dashGroup);
 
-// C. Horquilla Invertida Dorada de 43mm, Tija Forjada Negra y Torretas Altas Scrambler
+// C. Horquilla Dorada de 43mm, Fuelles de Goma Clásicos (Fork Gaiters), Tija Forjada y Torretas Altas
 const forkGeo = new THREE.CylinderGeometry(0.032, 0.030, 0.48, 20);
 
 [-1, 1].forEach(s => {
@@ -1381,6 +1720,18 @@ const forkGeo = new THREE.CylinderGeometry(0.032, 0.030, 0.48, 20);
   fork.position.set(s * 0.148, -0.26, -0.53);
   fork.rotation.x = Math.PI / 7.2;
   cockpitGroup.add(fork);
+
+  // Fuelles de goma acanalada clásicos de Scrambler en la parte inferior de la horquilla
+  for (let r = 0; r < 6; r++) {
+    const bellowRing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.008, 10, 20), rubberPadMat);
+    bellowRing.rotation.x = Math.PI / 2 + Math.PI / 7.2;
+    bellowRing.position.set(
+      s * 0.148,
+      -0.31 - r * 0.018,
+      -0.555 - r * 0.008
+    );
+    cockpitGroup.add(bellowRing);
+  }
 
   // Tapas superiores de horquilla en aluminio mecanizado plata
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 16), brushedAluminumMat);
@@ -1428,7 +1779,7 @@ tripleClampGroup.add(keyTag);
 
 cockpitGroup.add(tripleClampGroup);
 
-// D. Tanque Lágrima Clásico Bitono con Gomas Laterales, Correa de Cuero y Tapa Monza Cromada
+// D. Tanque Lágrima Clásico Bitono, Aletas del Motor Bicilíndrico y Curvas de Escape Cromadas
 const tankGroup = new THREE.Group();
 
 // Cuerpo principal del tanque lágrima en Verde Scrambler
@@ -1477,9 +1828,26 @@ monzaLatch.rotation.z = -0.22;
 monzaLatch.rotation.x = 0.12;
 tankGroup.add(monzaLatch);
 
+// Aletas de refrigeración del motor bicilíndrico y curvas de escape cromadas asomando bajo el tanque
+for (let f = 0; f < 5; f++) {
+  const finPlate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.006, 0.18), brushedAluminumMat);
+  finPlate.position.set(0, -0.46 - f * 0.018, -0.34);
+  tankGroup.add(finPlate);
+}
+
+[-1, 1].forEach(s => {
+  const headerCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(s * 0.11, -0.48, -0.40),
+    new THREE.Vector3(s * 0.18, -0.54, -0.52),
+    new THREE.Vector3(s * 0.16, -0.66, -0.32)
+  );
+  const headerPipe = new THREE.Mesh(new THREE.TubeGeometry(headerCurve, 14, 0.022, 12, false), chromeBrightMat);
+  tankGroup.add(headerPipe);
+});
+
 cockpitGroup.add(tankGroup);
 
-// E. Manillar Ancho Scrambler con Barra Transversal, Pad Acolchado, Cubrepuños y Espejos Redondos
+// E. Manillar Ancho Scrambler con Barra Transversal, Pad Bordado, Cubrepuños y Espejos Redondos
 const steeringAssembly = new THREE.Group();
 steeringAssembly.position.set(0, -0.115, -0.45);
 
@@ -1500,9 +1868,17 @@ crossBarTube.rotation.z = Math.PI / 2;
 crossBarTube.position.set(0, 0.052, 0);
 steeringAssembly.add(crossBarTube);
 
-// Protector acolchado cilíndrico en la barra transversal (Crossbar Roll Pad en cuero/espuma)
-const crossBarPad = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.21, 20), vintageLeatherMat);
+// Protector acolchado cilíndrico en la barra transversal con bordado clásico "SCRAMBLER // 650 TWIN"
+const crossBarPadMat = new THREE.MeshStandardMaterial({
+  map: createCrossbarPadTexture(),
+  normalMap: terrainMaps.norm,
+  normalScale: new THREE.Vector2(0.28, 0.28),
+  roughness: 0.65,
+  metalness: 0.06
+});
+const crossBarPad = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.21, 20), crossBarPadMat);
 crossBarPad.rotation.z = Math.PI / 2;
+crossBarPad.rotation.x = -0.35;
 crossBarPad.position.set(0, 0.052, 0);
 steeringAssembly.add(crossBarPad);
 
@@ -1910,8 +2286,9 @@ function updateHandlingPhysics(dt) {
   camera.fov = 64 + (simState.speed / simState.maxSpeed) * 11;
   camera.updateProjectionMatrix();
 
-  // Contramanillar sutil en el conjunto de dirección y desplazamiento de reflejo en espejos
+  // Contramanillar sutil, giro real del neumático delantero con tacos y reflejo en espejos
   steeringAssembly.rotation.y = -simState.steeringInput * 0.065;
+  frontWheelSpinGroup.rotation.x -= speedMps * 3.2 * dt;
   mirrorReflTex.offset.x = simState.leanAngle * 0.15;
 
   // Actualizar la luz solar y su frustum de sombras para que siga al jugador
@@ -1932,10 +2309,18 @@ function updateHandlingPhysics(dt) {
   );
   motoHeadlight.target.updateMatrixWorld();
 
-  // Cúpula celeste, lago y partículas de polvo en suspensión centrados respecto al avance
+  // Cúpula celeste, cordillera 360°, destello solar, lago animado y partículas de polvo
   skyDome.position.copy(camera.position);
+  mountainRangeMesh.position.set(camera.position.x, -45, camera.position.z);
+  sunGlareSprite.position.set(
+    camera.position.x + sunDirection.x * 1750,
+    camera.position.y + sunDirection.y * 1750,
+    camera.position.z + sunDirection.z * 1750
+  );
   waterMesh.position.x = camera.position.x - 180;
   waterMesh.position.z = camera.position.z - 200;
+  waterNormTex.offset.x += 0.022 * dt;
+  waterNormTex.offset.y += 0.014 * dt;
 
   dustParticles.position.set(camera.position.x, roadOri.y, camera.position.z);
   dustParticles.rotation.y = roadOri.yaw;
@@ -1985,12 +2370,18 @@ function updateHandlingPhysics(dt) {
     }
   });
 
-  // Actualizar Tráfico 3D
+  // Actualizar Tráfico 3D y rotación de sus ruedas
   vehicles.forEach(v => {
     if (v.laneOffset < 0) {
       v.distAhead -= ((v.speed + simState.speed) / 3.6) * dt;
     } else {
       v.distAhead += ((v.speed - simState.speed) / 3.6) * dt;
+    }
+
+    if (v.wheels) {
+      v.wheels.forEach(w => {
+        w.rotation.x -= (v.speed / 3.6) * 2.5 * dt;
+      });
     }
 
     const vDist = simState.playerDistance + v.distAhead;
