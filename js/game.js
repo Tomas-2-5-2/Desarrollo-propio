@@ -1,4 +1,4 @@
-// Motor Gráfico 3D Ultra Realista: Control Intuitivo, Trazada Fina, Paisaje Alpino de Alta Gama y Vegetación Orgánica
+// Motor Gráfico 3D Ultra Realista: Texturas Fotográficas, Vegetación Real, Horizonte Alpino y Cabina Esculpida
 
 const container = document.getElementById('webgl-container');
 const btnFullscreen = document.getElementById('btn-fullscreen');
@@ -36,13 +36,13 @@ const simState = {
   bikeHealth: 100,
   money: 180,
   
-  // Control y Física de Moto Realista
+  // Conducción Realista (Física de Moto)
   playerDistance: 0,  // Metros recorridos
-  laneOffset: 1.6,    // -4.5 (izq) a +4.5 (der)
+  laneOffset: 1.5,    // -4.5 (izq) a +4.5 (der)
   steeringInput: 0,   // -1 (izq) a +1 (der)
-  leanAngle: 0,       // Inclinación física de la moto
-  pitchSuspension: 0, // Hundimiento de horquilla delantera
-  headLookApex: 0,    // Mirada anticipatoria hacia la curva
+  leanAngle: 0,       // Inclinación chasis
+  pitchSuspension: 0, // Horquilla delantera
+  headLookApex: 0,    // Mirada al ápice
   
   targetDistanceKm: 16.0,
   odometer: 0,
@@ -53,69 +53,153 @@ const simState = {
 };
 
 // ==========================================
-// 1. TRAYECTORIA Y GEOMETRÍA DE LA RUTA 3D
+// 1. GENERADORES DE TEXTURAS FOTOREALISTAS (NO CARICATURA)
 // ==========================================
 
-function getRoadPoint(dist) {
-  // Curvas armoniosas tipo paso alpino
-  const x = Math.sin(dist * 0.0065) * 26 + Math.cos(dist * 0.0028) * 14;
-  const y = Math.sin(dist * 0.0045) * 2.5 + Math.cos(dist * 0.009) * 1.2 + 0.15;
-  const z = -dist;
-  return { x, y, z };
+// A. Pino Alpino Fotográfico con Ramas y Acículas Reales (Textura Alpha)
+function createPhotorealisticPineTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 768;
+  const ctx = canvas.getContext('2d');
+
+  // Tronco con corteza real
+  const trunkGrad = ctx.createLinearGradient(240, 768, 272, 768);
+  trunkGrad.addColorStop(0, '#2d1f14');
+  trunkGrad.addColorStop(0.5, '#4a3525');
+  trunkGrad.addColorStop(1, '#1e140d');
+  ctx.fillStyle = trunkGrad;
+  ctx.fillRect(246, 380, 20, 388);
+
+  // Follaje fotográfico denso capa por capa
+  const tiers = 14;
+  for (let t = 0; t < tiers; t++) {
+    const y = 80 + (t * 36);
+    const w = 40 + (t * 18);
+    const branches = 24 + t * 4;
+
+    for (let b = 0; b < branches; b++) {
+      const bx = 256 + (Math.random() - 0.5) * w * 2;
+      const by = y + (Math.random() - 0.5) * 28;
+      const rad = 14 + Math.random() * 22;
+
+      const pGrad = ctx.createRadialGradient(bx, by, 2, bx, by, rad);
+      pGrad.addColorStop(0, Math.random() < 0.5 ? '#1b4332' : '#2d6a4f');
+      pGrad.addColorStop(0.6, '#132a13');
+      pGrad.addColorStop(1, 'rgba(10, 26, 15, 0)');
+
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(bx, by, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
 }
 
-function getRoadOrientation(dist) {
-  const p0 = getRoadPoint(dist);
-  const p1 = getRoadPoint(dist + 2.0);
+// B. Árbol Frondoso de Hoja Real (Textura Alpha)
+function createPhotorealisticLeafyTreeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 768;
+  const ctx = canvas.getContext('2d');
 
-  const dx = p1.x - p0.x;
-  const dy = p1.y - p0.y;
-  const dz = -(p1.z - p0.z); // Distancia positiva hacia adelante
+  // Tronco leñoso
+  ctx.fillStyle = '#3a2e22';
+  ctx.fillRect(244, 420, 24, 348);
 
-  // Rumbo correcto en Three.js mirando hacia -Z:
-  const yaw = -Math.atan2(dx, dz);
-  const pitch = -Math.atan2(dy, dz);
-  const roll = (dx / dz) * 0.40;
+  // Copa redondeada orgánica con iluminación solar
+  for (let i = 0; i < 450; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.pow(Math.random(), 0.5) * 190;
+    const x = 256 + Math.cos(angle) * r;
+    const y = 260 + Math.sin(angle) * r * 0.85;
+    const size = 20 + Math.random() * 32;
 
-  return { x: p0.x, y: p0.y, z: p0.z, yaw, pitch, roll, curveRate: dx / dz };
+    const leafGrad = ctx.createRadialGradient(x, y - 5, 4, x, y, size);
+    leafGrad.addColorStop(0, '#4d8c36');
+    leafGrad.addColorStop(0.5, '#2e6b2e');
+    leafGrad.addColorStop(1, 'rgba(25, 60, 25, 0)');
+
+    ctx.fillStyle = leafGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
 }
 
-// ==========================================
-// 2. TEXTURAS PROCEDURALES PBR DE ALTA DEFINICIÓN
-// ==========================================
+// C. Horizonte Fotográfico de Montañas con Nieve y Atmósfera
+function createPhotorealisticMountainPanoramicTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
 
-function createAsphaltTexture() {
+  // Fondo transparente arriba
+  ctx.clearRect(0, 0, 2048, 512);
+
+  // Cordillera escarpada realista
+  for (let x = 0; x < 2048; x += 3) {
+    const nx = x * 0.005;
+    const peakHeight = Math.sin(nx * 1.5) * 90 + Math.cos(nx * 3.2) * 55 + Math.sin(nx * 7.0) * 25 + 260;
+    const y = 512 - peakHeight;
+
+    const mGrad = ctx.createLinearGradient(x, y, x, 512);
+    mGrad.addColorStop(0, '#f1f5f9'); // Cumbres nevadas
+    mGrad.addColorStop(0.18, '#cbd5e1');
+    mGrad.addColorStop(0.45, '#334155'); // Roca oscura
+    mGrad.addColorStop(0.85, '#1e293b'); // Base con neblina
+    mGrad.addColorStop(1, '#64748b');
+
+    ctx.fillStyle = mGrad;
+    ctx.fillRect(x, y, 3, 512 - y);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.repeat.set(2, 1);
+  return texture;
+}
+
+// D. Asfalto Realista con Agregado y Textura PBR
+function createRealAsphaltTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 1024;
   const ctx = canvas.getContext('2d');
 
-  // Asfalto gris oscuro con textura de árido
-  ctx.fillStyle = '#22252c';
+  ctx.fillStyle = '#20232a';
   ctx.fillRect(0, 0, 1024, 1024);
 
   const imgData = ctx.getImageData(0, 0, 1024, 1024);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() - 0.5) * 24;
+    const n = (Math.random() - 0.5) * 26;
     d[i] = Math.min(255, Math.max(0, d[i] + n));
     d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + n));
     d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + n));
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // Huellas de neumático
-  ctx.fillStyle = 'rgba(12, 14, 18, 0.45)';
-  ctx.fillRect(200, 0, 210, 1024);
-  ctx.fillRect(614, 0, 210, 1024);
+  // Huella de rodaje
+  ctx.fillStyle = 'rgba(10, 12, 16, 0.5)';
+  ctx.fillRect(190, 0, 220, 1024);
+  ctx.fillRect(614, 0, 220, 1024);
 
-  // Línea divisoria central amarilla discontinua
+  // Línea amarilla central discontinua
   ctx.fillStyle = '#f59e0b';
   for (let y = 30; y < 1024; y += 180) {
     ctx.fillRect(504, y, 16, 110);
   }
 
-  // Líneas blancas continuas laterales
+  // Líneas blancas laterales
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(50, 0, 14, 1024);
   ctx.fillRect(960, 0, 14, 1024);
@@ -132,52 +216,56 @@ function createGrassTexture() {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#2d4d23';
+  ctx.fillStyle = '#25421d';
   ctx.fillRect(0, 0, 512, 512);
 
   for (let i = 0; i < 4000; i++) {
     const x = Math.random() * 512;
     const y = Math.random() * 512;
-    ctx.fillStyle = Math.random() < 0.5 ? '#3b612e' : '#233d1b';
+    ctx.fillStyle = Math.random() < 0.5 ? '#315424' : '#1d3616';
     ctx.fillRect(x, y, 2, 2);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(60, 60);
+  texture.repeat.set(70, 70);
   return texture;
 }
 
-function createSignTexture(text, isYellow) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
+// ==========================================
+// 2. TRAYECTORIA Y CURVATURA PRECISA
+// ==========================================
 
-  ctx.fillStyle = isYellow ? '#f59e0b' : '#f8fafc';
-  ctx.fillRect(0, 0, 256, 256);
+function getRoadPoint(dist) {
+  const x = Math.sin(dist * 0.0065) * 26 + Math.cos(dist * 0.0028) * 14;
+  const y = Math.sin(dist * 0.0045) * 2.5 + Math.cos(dist * 0.009) * 1.2 + 0.15;
+  const z = -dist;
+  return { x, y, z };
+}
 
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 14;
-  ctx.strokeRect(10, 10, 236, 236);
+function getRoadOrientation(dist) {
+  const p0 = getRoadPoint(dist);
+  const p1 = getRoadPoint(dist + 2.0);
 
-  ctx.fillStyle = '#09090b';
-  ctx.font = '700 80px "Chakra Petch", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, 128, 128);
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const dz = -(p1.z - p0.z);
 
-  return new THREE.CanvasTexture(canvas);
+  const yaw = -Math.atan2(dx, dz);
+  const pitch = -Math.atan2(dy, dz);
+  const roll = (dx / dz) * 0.40;
+
+  return { x: p0.x, y: p0.y, z: p0.z, yaw, pitch, roll, curveRate: dx / dz };
 }
 
 // ==========================================
-// 3. ESCENA 3D, CÁMARA Y RENDERIZADOR
+// 3. ESCENA 3D Y CONFIGURACIÓN GRÁFICA
 // ==========================================
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x60a5fa);
-scene.fog = new THREE.FogExp2(0x93c5fd, 0.0016);
+scene.background = new THREE.Color(0x5ca0e6);
+scene.fog = new THREE.FogExp2(0x94bfe8, 0.0014);
 
 let width = window.innerWidth;
 let height = window.innerHeight;
@@ -215,13 +303,13 @@ function toggleFullscreen() {
 }
 
 // ==========================================
-// 4. ILUMINACIÓN SOLAR CINEMATOGRÁFICA
+// 4. ILUMINACIÓN SOLAR Y CIELO
 // ==========================================
 
 const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x1e3a1e, 0.95);
 scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xfffaed, 1.6);
+const sunLight = new THREE.DirectionalLight(0xfffaed, 1.65);
 sunLight.position.set(250, 450, -350);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
@@ -229,9 +317,10 @@ sunLight.shadow.mapSize.height = 2048;
 scene.add(sunLight);
 
 // ==========================================
-// 5. PAISAJE NATURAL: PRADERA, CORDILLERA Y NUBES
+// 5. PAISAJE FOTOREALISTA: HORIZONTE ALPINO Y PRADERA
 // ==========================================
 
+// Suelo
 const groundMat = new THREE.MeshStandardMaterial({ map: createGrassTexture(), roughness: 0.9 });
 const groundGeo = new THREE.PlaneGeometry(5000, 5000);
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -239,46 +328,19 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = 0;
 scene.add(ground);
 
-// Cordillera alpina
-const mountainsGroup = new THREE.Group();
-const mtnGeo = new THREE.ConeGeometry(140, 260, 7);
-const mtnMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85, flatShading: true });
-const snowGeo = new THREE.ConeGeometry(50, 95, 7);
-const snowMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+// Horizonte fotográfico 360 de cordillera alpina (Cilindro panorámico)
+const mtnTexture = createPhotorealisticMountainMountainTexture = createPhotorealisticMountainPanoramicTexture();
+const panoGeo = new THREE.CylinderGeometry(1400, 1400, 380, 48, 1, true);
+const panoMat = new THREE.MeshBasicMaterial({ map: mtnTexture, transparent: true, side: THREE.BackSide, fog: true });
+const panoramicMountains = new THREE.Mesh(panoGeo, panoMat);
+panoramicMountains.position.y = 130;
+scene.add(panoramicMountains);
 
-for (let i = 0; i < 30; i++) {
-  const m = new THREE.Group();
-  const rock = new THREE.Mesh(mtnGeo, mtnMat);
-  rock.position.y = 130;
-  m.add(rock);
-  const snow = new THREE.Mesh(snowGeo, snowMat);
-  snow.position.y = 212;
-  m.add(snow);
-
-  const ang = (i / 30) * Math.PI * 2;
-  const rad = 1100 + Math.random() * 350;
-  m.position.set(Math.cos(ang) * rad, 0, Math.sin(ang) * rad);
-  m.scale.set(1.2 + Math.random() * 1.5, 1 + Math.random() * 1.4, 1.2 + Math.random() * 1.5);
-  mountainsGroup.add(m);
-}
-scene.add(mountainsGroup);
-
-// Nubes volumétricas 3D en el cielo
-const cloudGroup = new THREE.Group();
-const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, transparent: true, opacity: 0.85 });
-for (let i = 0; i < 24; i++) {
-  const c = new THREE.Group();
-  for (let j = 0; j < 5; j++) {
-    const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(25 + Math.random() * 20, 1), cloudMat);
-    puff.position.set((j - 2) * 22, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 18);
-    c.add(puff);
-  }
-  const dist = 600 + Math.random() * 600;
-  const ang = Math.random() * Math.PI * 2;
-  c.position.set(Math.cos(ang) * dist, 180 + Math.random() * 90, Math.sin(ang) * dist);
-  cloudGroup.add(c);
-}
-scene.add(cloudGroup);
+// Cúpula celeste
+const skyGeo = new THREE.SphereGeometry(1800, 32, 20);
+const skyMat = new THREE.MeshBasicMaterial({ color: 0x5496e0, side: THREE.BackSide });
+const skyDome = new THREE.Mesh(skyGeo, skyMat);
+scene.add(skyDome);
 
 // ==========================================
 // 6. CARRETERA CONTINUA EN CINTA 3D (SEAMLESS RIBBON)
@@ -290,7 +352,7 @@ const ROAD_WIDTH = 11.2;
 
 const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, (RIBBON_POINTS - 1) * POINT_STEP, 1, RIBBON_POINTS - 1);
 const asphaltMat = new THREE.MeshStandardMaterial({
-  map: createAsphaltTexture(),
+  map: createRealAsphaltTexture(),
   roughness: 0.65,
   metalness: 0.15,
   side: THREE.DoubleSide
@@ -314,95 +376,56 @@ for (let i = 0; i < 35; i++) {
 scene.add(catEyesGroup);
 
 // ==========================================
-// 7. VEGETACIÓN REALISTA: PINOS, ÁRBOLES Y FLORES
+// 7. VEGETACIÓN FOTOREALISTA (ÁRBOLES Y PINOS REALES CON ALPHA)
 // ==========================================
 
+const pineTex = createPhotorealisticPineTexture();
+const leafyTex = createPhotorealisticLeafyTreeTexture();
+
+const pineMat = new THREE.MeshStandardMaterial({ map: pineTex, transparent: true, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide });
+const leafyMat = new THREE.MeshStandardMaterial({ map: leafyTex, transparent: true, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide });
+
+// Geometría en cruz para árboles realistas con volumen 3D
+function createRealisticTree(isPine) {
+  const tree = new THREE.Group();
+  const mat = isPine ? pineMat : leafyMat;
+  const w = isPine ? 7.5 : 9.0;
+  const h = isPine ? 13.0 : 12.0;
+
+  const planeGeo = new THREE.PlaneGeometry(w, h);
+
+  // Plano 1
+  const p1 = new THREE.Mesh(planeGeo, mat);
+  p1.position.y = h / 2;
+  tree.add(p1);
+
+  // Plano 2 en cruz (90 grados) para volumen tridimensional total
+  const p2 = new THREE.Mesh(planeGeo, mat);
+  p2.position.y = h / 2;
+  p2.rotation.y = Math.PI / 2;
+  tree.add(p2);
+
+  return tree;
+}
+
 const natureGroup = new THREE.Group();
-
-// Creador de pino de montaña
-function createDetailedPine() {
-  const g = new THREE.Group();
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.24, 0.36, 4.2, 8),
-    new THREE.MeshStandardMaterial({ color: 0x3d2616, roughness: 0.9 })
-  );
-  trunk.position.y = 2.1;
-  g.add(trunk);
-
-  // 4 capas cónicas con hojas sombreadas
-  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x193b2a, roughness: 0.8, flatShading: true });
-  for (let i = 0; i < 4; i++) {
-    const f = new THREE.Mesh(new THREE.ConeGeometry(2.4 - i * 0.45, 3.0, 8), foliageMat);
-    f.position.y = 3.2 + i * 1.6;
-    g.add(f);
-  }
-  return g;
-}
-
-// Creador de árbol frondoso de hoja caduca
-function createDeciduousTree() {
-  const g = new THREE.Group();
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.28, 0.40, 4.5, 8),
-    new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 })
-  );
-  trunk.position.y = 2.25;
-  g.add(trunk);
-
-  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2e6b2e, roughness: 0.85, flatShading: true });
-  for (let i = 0; i < 4; i++) {
-    const sphere = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 + Math.random() * 0.8, 1), foliageMat);
-    sphere.position.set((Math.random() - 0.5) * 1.5, 4.0 + i * 1.1, (Math.random() - 0.5) * 1.5);
-    g.add(sphere);
-  }
-  return g;
-}
-
 const natureProps = [];
+
 for (let i = 0; i < 50; i++) {
   const isPine = (i % 2 === 0);
-  const tree = isPine ? createDetailedPine() : createDeciduousTree();
-  const scale = 1.0 + Math.random() * 0.7;
+  const tree = createRealisticTree(isPine);
+  const scale = 0.85 + Math.random() * 0.45;
   tree.scale.set(scale, scale, scale);
   natureGroup.add(tree);
 
   natureProps.push({
     mesh: tree,
     side: (i % 4 < 2 ? 1 : -1),
-    offsetLateral: 8.5 + Math.random() * 9,
+    offsetLateral: 9.0 + Math.random() * 9,
     distAhead: i * 16
   });
 }
 scene.add(natureGroup);
-
-// Carteles viales reflectantes
-const signGroup = new THREE.Group();
-const signPoleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
-const signBoardGeo = new THREE.BoxGeometry(1.2, 1.2, 0.05);
-
-const signs = [
-  { text: '⚠️', isYellow: true, distAhead: 60, side: 1 },
-  { text: '80', isYellow: false, distAhead: 150, side: 1 },
-  { text: '⮞⮞', isYellow: true, distAhead: 240, side: 1 },
-  { text: '⚠️', isYellow: true, distAhead: 340, side: 1 }
-];
-
-const roadSigns = [];
-signs.forEach(s => {
-  const g = new THREE.Group();
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8, 8), signPoleMat);
-  pole.position.y = 1.4;
-  g.add(pole);
-
-  const boardMat = new THREE.MeshBasicMaterial({ map: createSignTexture(s.text, s.isYellow) });
-  const board = new THREE.Mesh(signBoardGeo, boardMat);
-  board.position.y = 2.4;
-  g.add(board);
-
-  signGroup.add(g);
-  roadSigns.push({ mesh: g, distAhead: s.distAhead, side: s.side });
-});
-scene.add(signGroup);
 
 // ==========================================
 // 8. TRÁFICO 3D (AUTOS Y CAMIONES)
@@ -452,45 +475,59 @@ function createDetailedVehicle(type, colorHex, laneOffset, initialRelDist) {
 }
 
 // ==========================================
-// 9. CABINA REALISTA: TANQUE ESCULPIDO Y GUANTES
+// 9. CABINA REALISTA ESCULPIDA (CURVAS SUAVES, SIN CAJAS)
 // ==========================================
 
 const cockpitGroup = new THREE.Group();
 
-// Tanque deportivo esculpido
+// Tanque deportivo esculpido y contorneado
 const tankGroup = new THREE.Group();
-const tankMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.75, roughness: 0.2 });
+const tankPaintMat = new THREE.MeshStandardMaterial({
+  color: 0xdc2626,
+  metalness: 0.8,
+  roughness: 0.18,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.1
+});
+
+// Chasis cónico curvado hacia el asiento (suave, sin aristas cuadradas)
+const tankBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.12, 0.18, 0.72, 24),
+  tankPaintMat
+);
+tankBody.rotation.x = Math.PI / 2.3;
+tankBody.position.set(0, -0.38, -0.28);
+tankGroup.add(tankBody);
+
+// Almohadillas de goma vulcanizada en los laterales (rodilleras)
 const padMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.95 });
+const padGeo = new THREE.CylinderGeometry(0.025, 0.04, 0.45, 16);
+padGeo.rotateZ(Math.PI / 2);
 
-const tankCenter = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.22, 0.70), tankMat);
-tankCenter.position.set(0, -0.38, -0.28);
-tankCenter.rotation.x = Math.PI / 10;
-tankGroup.add(tankCenter);
-
-const padLeft = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.42), padMat);
+const padLeft = new THREE.Mesh(padGeo, padMat);
 padLeft.position.set(-0.13, -0.36, -0.26);
-padLeft.rotation.x = Math.PI / 10;
 tankGroup.add(padLeft);
 
-const padRight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.42), padMat);
+const padRight = new THREE.Mesh(padGeo, padMat);
 padRight.position.set(0.13, -0.36, -0.26);
-padRight.rotation.x = Math.PI / 10;
 tankGroup.add(padRight);
 
+// Tapa de nafta cromada
 const cap = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.04, 0.04, 0.012, 16),
+  new THREE.CylinderGeometry(0.04, 0.04, 0.012, 20),
   new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.1 })
 );
-cap.position.set(0, -0.25, -0.25);
+cap.position.set(0, -0.24, -0.25);
 tankGroup.add(cap);
 cockpitGroup.add(tankGroup);
 
-// Tija y Manillar
+// Tija Superior mecanizada en aluminio
 const clampMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
-const clamp = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.08), clampMat);
+const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.035, 24), clampMat);
 clamp.position.set(0, -0.20, -0.52);
 cockpitGroup.add(clamp);
 
+// Manillar en aleación
 const barMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.25 });
 const barGeo = new THREE.CylinderGeometry(0.020, 0.020, 0.92, 16);
 barGeo.rotateZ(Math.PI / 2);
@@ -507,7 +544,7 @@ const rightGrip = new THREE.Mesh(gripGeo, gripMat); rightGrip.position.set(0.36,
 cockpitGroup.add(leftGrip);
 cockpitGroup.add(rightGrip);
 
-// Manetas
+// Manetas de freno y embrague
 const leverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.15 });
 const leverGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.17, 10);
 leverGeo.rotateZ(Math.PI / 3);
@@ -518,7 +555,7 @@ cockpitGroup.add(rightLever);
 
 // Depósito transparente de líquido de freno delantero
 const reservoirMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.75, roughness: 0.1 });
-const reservoir = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.038, 12), reservoirMat);
+const reservoir = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.038, 14), reservoirMat);
 reservoir.position.set(0.26, -0.12, -0.55);
 cockpitGroup.add(reservoir);
 
@@ -530,7 +567,7 @@ function createHand(isLeft) {
   const h = new THREE.Group();
   const dir = isLeft ? -1 : 1;
 
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.42, 12), gloveMat);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.42, 14), gloveMat);
   arm.position.set(0, -0.15, 0.18);
   arm.rotation.x = Math.PI / 3.4;
   h.add(arm);
@@ -568,7 +605,7 @@ camera.add(cockpitGroup);
 scene.add(camera);
 
 // ==========================================
-// 10. CONTROLES Y TECLADO (CORREGIDOS Y NATURALES)
+// 10. CONTROLES Y TECLADO
 // ==========================================
 
 const keys = { throttle: false, brake: false, steerLeft: false, steerRight: false };
@@ -576,9 +613,9 @@ const keys = { throttle: false, brake: false, steerLeft: false, steerRight: fals
 window.addEventListener('keydown', (e) => {
   if (['KeyW', 'ArrowUp'].includes(e.code)) keys.throttle = true;
   if (['KeyS', 'ArrowDown'].includes(e.code)) keys.brake = true;
-  // A / Flecha Izquierda = Dobla hacia la IZQUIERDA
+  // A / Izquierda -> Gira hacia la izquierda
   if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.steerLeft = true;
-  // D / Flecha Derecha = Dobla hacia la DERECHA
+  // D / Derecha -> Gira hacia la derecha
   if (['KeyD', 'ArrowRight'].includes(e.code)) keys.steerRight = true;
 
   if (e.code === 'KeyE') shiftUp();
@@ -699,11 +736,7 @@ function updateHandlingPhysics(dt) {
     }
   }
 
-  // ========================================================
-  // FÍSICA DE MANEJO CORREGIDA (DIRECCIÓN TOTALMENTE NATURAL):
-  // - A / Izquierda: steerInput negativo -> laneOffset se desplaza a la IZQUIERDA (-)
-  // - D / Derecha: steerInput positivo -> laneOffset se desplaza a la DERECHA (+)
-  // ========================================================
+  // Manejo: A = Izquierda (-), D = Derecha (+)
   let steer = 0;
   if (keys.steerLeft) steer -= 1;
   if (keys.steerRight) steer += 1;
@@ -711,30 +744,25 @@ function updateHandlingPhysics(dt) {
   const steerSpeed = (simState.speed > 120 ? 5.0 : (simState.speed > 50 ? 6.5 : 8.0));
   simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, steerSpeed * dt);
 
-  // Inclinación física de la moto: al doblar a la izquierda, la moto se inclina a la izquierda
-  const maxLean = 0.42; // ~24 grados
+  const maxLean = 0.42;
   simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, 6.5 * dt);
 
-  // Desplazamiento lateral directo y suave según la velocidad
   const turnRate = 5.6 * Math.min(1.4, (simState.speed + 15) / 75);
   simState.laneOffset += simState.steeringInput * turnRate * dt;
   simState.laneOffset = Math.max(-4.8, Math.min(4.8, simState.laneOffset));
 
-  // Avance del jugador
+  // Avance
   simState.playerDistance += (simState.speed / 3.6) * dt;
 
   // Orientación en la posición del piloto
   const roadOri = getRoadOrientation(simState.playerDistance);
 
-  // La inercia en curva empuja levemente hacia afuera si vas muy rápido
   simState.laneOffset += roadOri.curveRate * (simState.speed / 100) * 1.6 * dt;
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.2);
 
-  // Mirada hacia el ápice de la curva (Head tracking dinámico)
   const targetLook = -simState.steeringInput * 0.08;
   simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.0 * dt);
 
-  // Posición de la cámara en el carril
   const perpX = Math.cos(roadOri.yaw);
   const perpZ = Math.sin(roadOri.yaw);
 
@@ -745,20 +773,18 @@ function updateHandlingPhysics(dt) {
   camera.position.y = roadOri.y + 1.42 + (Math.random() - 0.5) * vib;
   camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
 
-  // Orientación limpia y alineada de la cámara
+  // Cámara orientada de forma natural
   camera.rotation.set(0, 0, 0);
   camera.rotation.y = roadOri.yaw + simState.headLookApex;
   camera.rotation.x = roadOri.pitch + simState.pitchSuspension;
   camera.rotation.z = -simState.leanAngle * 0.72 + roadOri.roll;
 
-  // FOV dinámico con efecto de velocidad
   camera.fov = 65 + (simState.speed / simState.maxSpeed) * 10;
   camera.updateProjectionMatrix();
 
-  // Giro suave del manillar
   handlebar.rotation.y = -simState.steeringInput * 0.07;
 
-  // Actualizar Vegetación (Pinos y Árboles)
+  // Actualizar Vegetación Fotográfica (Pinos y Árboles)
   natureProps.forEach(p => {
     let pDist = simState.playerDistance + p.distAhead;
     const pt = getRoadPoint(pDist);
@@ -775,7 +801,7 @@ function updateHandlingPhysics(dt) {
     }
   });
 
-  // Actualizar Tachas Reflectantes (Ojos de gato) en la línea amarilla
+  // Actualizar Tachas Reflectantes (Ojos de gato)
   catEyes.forEach(ce => {
     let cDist = simState.playerDistance + ce.distOffset;
     const pt = getRoadPoint(cDist);
@@ -784,24 +810,6 @@ function updateHandlingPhysics(dt) {
     ce.distOffset -= ((simState.speed / 3.6) * dt);
     if (ce.distOffset < -10) {
       ce.distOffset += (catEyes.length * 8);
-    }
-  });
-
-  // Actualizar Carteles Viales
-  roadSigns.forEach(s => {
-    let sDist = simState.playerDistance + s.distAhead;
-    const pt = getRoadPoint(sDist);
-    const ori = getRoadOrientation(sDist);
-
-    const sx = Math.cos(ori.yaw) * (s.side * 7.5);
-    const sz = Math.sin(ori.yaw) * (s.side * 7.5);
-
-    s.mesh.position.set(pt.x + sx, pt.y, pt.z + sz);
-    s.mesh.rotation.y = ori.yaw;
-
-    s.distAhead -= ((simState.speed / 3.6) * dt);
-    if (s.distAhead < -20) {
-      s.distAhead += 400;
     }
   });
 
@@ -845,7 +853,7 @@ function updateHandlingPhysics(dt) {
     }
   });
 
-  // Temperatura y Audio
+  // Audio y Temperatura
   if (simState.rpm > simState.redlineRpm) {
     simState.engineTemp = Math.min(130, simState.engineTemp + 4.5 * dt);
   } else {
@@ -923,7 +931,7 @@ function updateTFT() {
     c.fill();
   }
 
-  // Indicador de Giro en el tablero (Corregido y sincronizado)
+  // Indicador de Giro en el tablero
   if (keys.steerLeft && performance.now() % 500 < 250) {
     c.fillStyle = '#22c55e';
     c.font = '700 48px sans-serif';
