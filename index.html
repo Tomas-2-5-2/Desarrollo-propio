@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruta Abierta: Aventura en Moto</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- Barra Superior / HUD -->
+    <header id="hud">
+      <div class="hud-item">
+        <span class="hud-label">DESTINO</span>
+        <span id="hud-destination" class="hud-value">Cruce del Desierto</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">DISTANCIA RESTANTE</span>
+        <span id="hud-distance" class="hud-value">12.0 km</span>
+      </div>
+      <div class="hud-item gauge-item">
+        <span class="hud-label">COMBUSTIBLE</span>
+        <div class="meter-bar"><div id="fuel-bar" style="width: 100%;"></div></div>
+        <span id="hud-fuel" class="hud-subvalue">100%</span>
+      </div>
+      <div class="hud-item gauge-item">
+        <span class="hud-label">MOTO (ESTADO)</span>
+        <div class="meter-bar"><div id="health-bar" style="width: 100%;"></div></div>
+        <span id="hud-health" class="hud-subvalue">100%</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">DINERO</span>
+        <span id="hud-money" class="hud-value">$150</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">VELOCIDAD</span>
+        <span id="hud-speed" class="hud-value">0 km/h</span>
+      </div>
+    </header>
+
+    <!-- Canvas Principal del Juego -->
+    <div id="canvas-wrapper">
+      <canvas id="gameCanvas" width="900" height="540"></canvas>
+
+      <!-- Pantalla de Inicio / Instrucciones -->
+      <div id="start-screen" class="overlay-modal active">
+        <div class="modal-box">
+          <div class="badge">AVENTURA EN MOTO</div>
+          <h1>RUTA ABIERTA</h1>
+          <p class="subtitle">Un viaje en dos ruedas hacia lo desconocido</p>
+          <div class="story-intro">
+            <p>Empacas tus pocas pertenencias en las alforjas, ajustas el casco y enciendes el motor. Tienes por delante cientos de kilómetros de asfalto, paisajes cambiantes, estaciones solitarias y decisiones difíciles.</p>
+          </div>
+          <div class="controls-guide">
+            <div class="ctrl-row"><span>⬅️ / ➡️ o [A] / [D]</span> : Girar la moto</div>
+            <div class="ctrl-row"><span>⬆️ o [W]</span> : Acelerar</div>
+            <div class="ctrl-row"><span>⬇️ o [S]</span> : Frenar</div>
+            <div class="ctrl-row"><span>[ESPACIO] o [H]</span> : Tocar bocina</div>
+          </div>
+          <button id="btn-start" class="btn-primary">¡ENCENDER MOTOR Y SALIR A LA RUTA!</button>
+        </div>
+      </div>
+
+      <!-- Pantalla de Evento / Parada en la Ruta (Pueblo, Taller, Cruce) -->
+      <div id="adventure-modal" class="overlay-modal">
+        <div class="modal-box event-box">
+          <div id="event-badge" class="badge">PARADA EN EL CAMINO</div>
+          <h2 id="event-title">Estación de Servicio "El Solitario"</h2>
+          <div id="event-image-container" class="event-illustration">
+            <span id="event-icon">⛽</span>
+          </div>
+          <p id="event-description" class="event-text">
+            El asfalto vibra con el calor. A la orilla de la ruta ves un viejo surtidor con un cartel oxidado. Un mecánico de mirada tranquila te saluda desde la sombra.
+          </p>
+          <div id="event-choices" class="choices-container">
+            <!-- Las opciones se inyectan dinámicamente con JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Pantalla de Fin de Juego (Game Over / Victoria) -->
+      <div id="gameover-modal" class="overlay-modal">
+        <div class="modal-box">
+          <div id="gameover-badge" class="badge danger">FIN DEL VIAJE</div>
+          <h2 id="gameover-title">La moto no da más</h2>
+          <p id="gameover-desc" class="event-text">Te has quedado varado al costado de la ruta.</p>
+          <button id="btn-restart" class="btn-primary">INTENTAR DE NUEVO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra Inferior de Información y Consejos -->
+    <footer id="footer-tips">
+      <span>💡 Esquiva baches y manchas de aceite en la calzada. Cuida el combustible antes de que la próxima estación quede demasiado lejos.</span>
+    </footer>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/adventure.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

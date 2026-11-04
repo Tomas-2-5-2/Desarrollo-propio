@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@400;500;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background: #0f1117;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#game-container {
+  width: 900px;
+  background: #171b26;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HUD Superior */
+#hud {
+  display: grid;
+  grid-template-columns: 1.5fr 1.3fr 1.5fr 1.5fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #11141d;
+  border-bottom: 2px solid #232936;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hud-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #718096;
+  margin-bottom: 3px;
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.hud-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f7fafc;
+  font-family: 'Chakra Petch', sans-serif;
+  white-space: nowrap;
+}
+
+.hud-subvalue {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e0;
+  font-family: 'Chakra Petch', sans-serif;
+  margin-top: 2px;
+}
+
+.meter-bar {
+  width: 100%;
+  height: 8px;
+  background: #2d3748;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#fuel-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #e53e3e, #dd6b20, #38a169);
+  transition: width 0.3s ease;
+}
+
+#health-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #e53e3e, #3182ce);
+  transition: width 0.3s ease;
+}
+
+/* Canvas del juego */
+#canvas-wrapper {
+  position: relative;
+  width: 900px;
+  height: 540px;
+  background: #000;
+}
+
+#gameCanvas {
+  display: block;
+  width: 900px;
+  height: 540px;
+}
+
+/* Modales e Interfaces superpuestas */
+.overlay-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 12, 18, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 50;
+}
+
+.overlay-modal.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal-box {
+  background: #1a202c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 580px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.35s ease;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  border-radius: 20px;
+  background: #e28743;
+  color: #fff;
+  margin-bottom: 12px;
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.badge.danger {
+  background: #e53e3e;
+}
+
+h1 {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  color: #a0aec0;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.story-intro {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid #e28743;
+  color: #cbd5e0;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.controls-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px 18px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+  color: #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.ctrl-row span {
+  font-family: 'Chakra Petch', monospace;
+  font-weight: 700;
+  color: #f6ad55;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #e28743 0%, #c05621 100%);
+  color: #fff;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(226, 135, 67, 0.4);
+}
+
+/* Cuadro de Eventos / Paradas de Aventura */
+.event-illustration {
+  font-size: 54px;
+  margin: 10px 0 16px 0;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+}
+
+.event-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cbd5e0;
+  margin-bottom: 24px;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.choices-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-btn {
+  background: #2d3748;
+  color: #f7fafc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.choice-btn:hover:not(:disabled) {
+  background: #4a5568;
+  border-color: #e28743;
+  transform: translateX(4px);
+}
+
+.choice-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.choice-cost {
+  font-size: 12px;
+  color: #f6ad55;
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 700;
+}
+
+/* Pie de pantalla */
+#footer-tips {
+  background: #11141d;
+  padding: 10px 20px;
+  font-size: 12px;
+  color: #a0aec0;
+  border-top: 1px solid #232936;
+  text-align: center;
+}

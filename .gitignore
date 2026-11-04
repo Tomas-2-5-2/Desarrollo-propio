@@ -1,0 +1,8 @@
+# Ignorar archivos del sistema y dependencias futuras
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+.env
+dist/
+build/
