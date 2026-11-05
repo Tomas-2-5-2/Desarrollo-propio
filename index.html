@@ -26,7 +26,10 @@
         <span class="hud-divider">|</span>
         <span id="gps-eta" class="hud-dim">ETA 11 min</span>
       </div>
-      <button id="btn-fullscreen" class="hud-pill btn-pill" title="Pantalla Completa">⛶ PANTALLA COMPLETA</button>
+      <div class="hud-actions">
+        <a id="btn-download-hud" href="dist/Moto-Travel-Ultra-3D-Portable.zip" download="Moto-Travel-Ultra-3D-Portable.zip" class="hud-pill btn-pill btn-download-pill" title="Descargar versión portable offline (.ZIP)">⬇ DESCARGAR .ZIP</a>
+        <button id="btn-fullscreen" class="hud-pill btn-pill" title="Pantalla Completa">⛶ PANTALLA COMPLETA</button>
+      </div>
     </div>
 
     <!-- Pantalla de Inicio / Configuración -->
@@ -34,12 +37,12 @@
       <div class="sim-card">
         <div class="sim-tag">SIMULADOR 3D DE ALTA FIDELIDAD</div>
         <h1>MOTO-TRAVEL ULTRA 3D</h1>
-        <p class="tagline">Gráficos de alta definición, texturas PBR, cabina inmersiva y física de ruta</p>
+        <p class="tagline">Gráficos de alta definición, texturas PBR, cabina Scrambler clásica y física de ruta</p>
 
         <div class="specs-grid">
           <div class="spec-box">
             <span class="spec-title">MOTO</span>
-            <span class="spec-val">Trail 650cc Rally</span>
+            <span class="spec-val">Scrambler 650 Twin</span>
           </div>
           <div class="spec-box">
             <span class="spec-title">TRANSMISIÓN</span>
@@ -47,11 +50,11 @@
           </div>
           <div class="spec-box">
             <span class="spec-title">CABINA</span>
-            <span class="spec-val">Piloto + Manos 3D</span>
+            <span class="spec-val">Vista Ojos Piloto 3D</span>
           </div>
           <div class="spec-box">
-            <span class="spec-title">MOTOR GRÁFICO</span>
-            <span class="spec-val">WebGL PBR 60FPS</span>
+            <span class="spec-title">EDICIÓN</span>
+            <span class="spec-val">Web + Portable ZIP</span>
           </div>
         </div>
 
@@ -69,9 +72,14 @@
           </div>
         </div>
 
-        <button id="btn-ignite" class="btn-ignite">
-          <span class="btn-icon">⚡</span> ARRANCAR MOTOR Y ENTRAR A LA RUTA
-        </button>
+        <div class="start-actions">
+          <button id="btn-ignite" class="btn-ignite">
+            <span class="btn-icon">⚡</span> ARRANCAR MOTOR Y ENTRAR A LA RUTA
+          </button>
+          <a id="btn-download-card" href="dist/Moto-Travel-Ultra-3D-Portable.zip" download="Moto-Travel-Ultra-3D-Portable.zip" class="btn-download-portable">
+            <span>⬇</span> DESCARGAR VERSIÓN PORTABLE PARA PC (.ZIP + EJECUTABLE OFFLINE)
+          </a>
+        </div>
       </div>
     </div>
 

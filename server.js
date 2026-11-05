@@ -6,12 +6,14 @@ const PORT = 3000;
 const ROOT = __dirname;
 
 const MIME = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'text/javascript',
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.zip': 'application/zip',
+  '.bat': 'application/x-msdos-program'
 };
 
 const server = http.createServer((req, res) => {
