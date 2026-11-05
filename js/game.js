@@ -783,6 +783,39 @@ function createCrossbarPadTexture() {
   return tex;
 }
 
+// Textura de lona encerada / cuero engrasado para la campera de viaje
+function createWaxedJacketTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+
+  // Base oscura de lona encerada impermeable
+  ctx.fillStyle = '#1c221e';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Micro-trama de tejido y arrugas de flexión en brazos
+  for (let i = 0; i < 700; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(40, 52, 45, 0.35)' : 'rgba(8, 12, 10, 0.45)';
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 4 + Math.random() * 8, 2);
+  }
+
+  // Costuras dobles reforzadas
+  ctx.strokeStyle = 'rgba(74, 88, 78, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, 80); ctx.lineTo(256, 80);
+  ctx.moveTo(0, 175); ctx.lineTo(256, 175);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 3);
+  return tex;
+}
+
 // Halo luminoso suave para faros del tráfico y destello solar
 function createLightGlowTexture(colorStop0, colorStop1) {
   const c = document.createElement('canvas');
@@ -2210,13 +2243,59 @@ function createHandlebarSide(isLeft) {
     handGroup.add(finger);
   }
 
-  // Manga de campera encerada oscura extendida hacia los hombros del piloto sentado más atrás
-  const jacketMat = new THREE.MeshStandardMaterial({ color: 0x1c211e, roughness: 0.78, metalness: 0.08 });
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.062, 0.48, 16), jacketMat);
-  sleeve.position.set(s * 0.04, -0.10, 0.23);
-  sleeve.rotation.x = Math.PI / 2.45;
-  sleeve.rotation.z = s * -0.12;
-  handGroup.add(sleeve);
+  // 2. Puño del guante clásico (Wrist Gauntlet / Cuff) con correa y broche metálico
+  const wristCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.045, 0.055, 16), vintageLeatherMat);
+  wristCuff.rotation.x = Math.PI / 2.3;
+  wristCuff.position.set(s * 0.015, -0.018, 0.045);
+  handGroup.add(wristCuff);
+
+  const cuffStrap = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.004, 8, 20), matteBlackMat);
+  cuffStrap.rotation.x = Math.PI / 2.3;
+  cuffStrap.position.set(s * 0.015, -0.018, 0.045);
+  handGroup.add(cuffStrap);
+
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.014), chromeBrightMat);
+  buckle.position.set(s * 0.060, -0.015, 0.045);
+  handGroup.add(buckle);
+
+  // 3. Brazo Completo Anatómicamente Conectado (Campera de Viaje Encerada)
+  const jacketMat = new THREE.MeshStandardMaterial({
+    color: 0x222724,
+    map: createWaxedJacketTexture(),
+    normalMap: terrainMaps.norm,
+    normalScale: new THREE.Vector2(0.25, 0.25),
+    roughness: 0.72,
+    metalness: 0.12
+  });
+
+  // A) Antebrazo (Forearm): desde la muñeca hacia el codo
+  const forearmLen = 0.30;
+  const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.062, forearmLen, 16), jacketMat);
+  forearm.position.set(s * 0.045, -0.075, 0.185);
+  forearm.rotation.x = Math.PI / 2.45;
+  forearm.rotation.z = s * -0.16;
+  handGroup.add(forearm);
+
+  // B) Codo flexionado con refuerzo acolchado
+  const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.064, 16, 12), jacketMat);
+  elbowJoint.position.set(s * 0.075, -0.145, 0.315);
+  elbowJoint.scale.set(1.05, 0.95, 1.25);
+  handGroup.add(elbowJoint);
+
+  // C) Brazo Superior / Bíceps y Hombro (Upper Arm & Shoulder)
+  // Se extiende de forma continua hacia atrás y abajo hasta salir completamente del encuadre
+  const upperArmLen = 0.65;
+  const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.086, upperArmLen, 16), jacketMat);
+  upperArm.position.set(s * 0.105, -0.275, 0.615);
+  upperArm.rotation.x = Math.PI / 2.15;
+  upperArm.rotation.z = s * -0.08;
+  handGroup.add(upperArm);
+
+  // D) Almohadilla de hombro visible en la esquina inferior periférica (sale de pantalla hacia el cuerpo del piloto)
+  const shoulderPad = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 12), jacketMat);
+  shoulderPad.position.set(s * 0.125, -0.395, 0.885);
+  shoulderPad.scale.set(1.2, 0.85, 1.15);
+  handGroup.add(shoulderPad);
 
   sideGroup.add(handGroup);
 
