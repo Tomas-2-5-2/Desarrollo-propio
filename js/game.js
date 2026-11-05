@@ -190,161 +190,198 @@ function createPBRAsphaltMaps() {
   normCanvas.height = 512;
   const nCtx = normCanvas.getContext('2d');
 
-  // Base de asfalto desgastado con áridos minerales
-  ctx.fillStyle = '#1b1e24';
+  // 1. Base de asfalto mineral profundo con micro-grano de áridos (granito, basalto y sílice)
+  ctx.fillStyle = '#16191f';
   ctx.fillRect(0, 0, 1024, 1024);
 
   const img = ctx.getImageData(0, 0, 1024, 1024);
   const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const grain = (Math.random() - 0.5) * 34;
-    const pebble = Math.random() < 0.11 ? 24 : (Math.random() < 0.05 ? -18 : 0);
-    d[i]     = Math.min(255, Math.max(0, 27 + grain + pebble));
-    d[i + 1] = Math.min(255, Math.max(0, 30 + grain + pebble));
-    d[i + 2] = Math.min(255, Math.max(0, 35 + grain + pebble));
+  const heightData = new Float32Array(512 * 512);
+
+  for (let y = 0; y < 1024; y++) {
+    for (let x = 0; x < 1024; x++) {
+      const idx = (y * 1024 + x) * 4;
+      const grain = (Math.random() - 0.5) * 28;
+      // Piedritas de granito gris y cuarzo brillante
+      const isQuartz = Math.random() < 0.08;
+      const isBasalt = Math.random() < 0.06;
+      const pebble = isQuartz ? 32 : (isBasalt ? -14 : 0);
+      d[idx]     = Math.min(255, Math.max(0, 22 + grain + pebble));
+      d[idx + 1] = Math.min(255, Math.max(0, 25 + grain + pebble));
+      d[idx + 2] = Math.min(255, Math.max(0, 30 + grain + pebble));
+
+      // Guardamos la altura en el mapa 512x512 para calcular normales Sobel de relieve real
+      if ((x % 2 === 0) && (y % 2 === 0)) {
+        const hIdx = (y >> 1) * 512 + (x >> 1);
+        heightData[hIdx] = (pebble + grain) * 0.015;
+      }
+    }
   }
   ctx.putImageData(img, 0, 0);
 
-  // Parches de bacheo vial (Asphalt repair patches) oscuros y claros para romper la monotonía
-  for (let p = 0; p < 14; p++) {
+  // 2. Parches de bacheo vial (Asphalt repair patches) de diferentes antigüedades
+  for (let p = 0; p < 16; p++) {
     const px = 90 + Math.random() * 820;
     const py = Math.random() * 1024;
-    const pw = 45 + Math.random() * 130;
-    const ph = 70 + Math.random() * 210;
-    ctx.fillStyle = Math.random() > 0.45 ? 'rgba(12, 14, 18, 0.42)' : 'rgba(52, 56, 64, 0.28)';
+    const pw = 50 + Math.random() * 140;
+    const ph = 75 + Math.random() * 220;
+    ctx.fillStyle = Math.random() > 0.45 ? 'rgba(10, 12, 16, 0.48)' : 'rgba(46, 50, 58, 0.32)';
     ctx.fillRect(px, py, pw, ph);
-    ctx.strokeStyle = 'rgba(8, 9, 12, 0.65)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(6, 7, 10, 0.72)';
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(px, py, pw, ph);
   }
 
-  // Huellas de neumáticos pulidas y manchas de aceite/grasa en el centro de cada mano
+  // 3. Huellas de neumáticos compactadas y pulidas con sheen reflectante a contraluz
   const trackGrad = ctx.createLinearGradient(0, 0, 1024, 0);
-  trackGrad.addColorStop(0.0, 'rgba(58, 48, 38, 0.72)');  // Polvo de banquina
-  trackGrad.addColorStop(0.11, 'rgba(20, 22, 26, 0.25)');
-  trackGrad.addColorStop(0.20, 'rgba(9, 11, 15, 0.58)');  // Huella rueda izq
-  trackGrad.addColorStop(0.28, 'rgba(6, 7, 10, 0.75)');   // Franja central de aceite/grasa
-  trackGrad.addColorStop(0.36, 'rgba(9, 11, 15, 0.58)');  // Huella rueda der
-  trackGrad.addColorStop(0.50, 'rgba(32, 34, 38, 0.22)');
-  trackGrad.addColorStop(0.64, 'rgba(9, 11, 15, 0.58)');
-  trackGrad.addColorStop(0.72, 'rgba(6, 7, 10, 0.75)');   // Franja central de aceite/grasa
-  trackGrad.addColorStop(0.80, 'rgba(9, 11, 15, 0.58)');
-  trackGrad.addColorStop(0.89, 'rgba(20, 22, 26, 0.25)');
-  trackGrad.addColorStop(1.0, 'rgba(58, 48, 38, 0.72)');
+  trackGrad.addColorStop(0.0, 'rgba(52, 42, 32, 0.75)');  // Polvo y ripio de banquina
+  trackGrad.addColorStop(0.10, 'rgba(18, 20, 24, 0.30)');
+  trackGrad.addColorStop(0.20, 'rgba(8, 10, 14, 0.65)');  // Huella rueda izquierda (mano sur)
+  trackGrad.addColorStop(0.28, 'rgba(5, 6, 8, 0.82)');    // Franja central de goteo de aceite/grasa
+  trackGrad.addColorStop(0.36, 'rgba(8, 10, 14, 0.65)');  // Huella rueda derecha (mano sur)
+  trackGrad.addColorStop(0.50, 'rgba(28, 30, 35, 0.25)'); // Eje central de la ruta
+  trackGrad.addColorStop(0.64, 'rgba(8, 10, 14, 0.65)');  // Huella rueda izquierda (mano norte)
+  trackGrad.addColorStop(0.72, 'rgba(5, 6, 8, 0.82)');    // Franja central de goteo de aceite/grasa
+  trackGrad.addColorStop(0.80, 'rgba(8, 10, 14, 0.65)');  // Huella rueda derecha (mano norte)
+  trackGrad.addColorStop(0.90, 'rgba(18, 20, 24, 0.30)');
+  trackGrad.addColorStop(1.0, 'rgba(52, 42, 32, 0.75)');
   ctx.fillStyle = trackGrad;
   ctx.fillRect(0, 0, 1024, 1024);
 
-  // Marcas de caucho y frenadas intermitentes
-  ctx.fillStyle = 'rgba(7, 8, 10, 0.52)';
-  for (let s = 0; s < 18; s++) {
-    const sx = (Math.random() > 0.5 ? 210 : 660) + (Math.random() - 0.5) * 140;
+  // Marcas de frenadas y goma quemada intermitentes
+  ctx.fillStyle = 'rgba(6, 7, 9, 0.58)';
+  for (let s = 0; s < 22; s++) {
+    const sx = (Math.random() > 0.5 ? 205 : 655) + (Math.random() - 0.5) * 130;
     const sy = Math.random() * 900;
-    ctx.fillRect(sx, sy, 9 + Math.random() * 8, 80 + Math.random() * 160);
+    ctx.fillRect(sx, sy, 10 + Math.random() * 9, 70 + Math.random() * 180);
   }
 
-  // Grietas longitudinales y transversales selladas con brea (Tar snakes)
-  ctx.strokeStyle = 'rgba(6, 7, 10, 0.82)';
-  ctx.lineWidth = 3.2;
-  for (let c = 0; c < 9; c++) {
+  // 4. Grietas longitudinales y transversales selladas con brea líquida ("Tar snakes")
+  ctx.strokeStyle = 'rgba(5, 6, 8, 0.88)';
+  ctx.lineWidth = 3.6;
+  for (let c = 0; c < 12; c++) {
     ctx.beginPath();
     let cx = 110 + Math.random() * 804;
     ctx.moveTo(cx, 0);
-    for (let y = 0; y <= 1024; y += 48) {
-      cx += (Math.random() - 0.5) * 32;
+    for (let y = 0; y <= 1024; y += 42) {
+      cx += (Math.random() - 0.5) * 36;
       ctx.lineTo(cx, y);
     }
     ctx.stroke();
   }
 
-  // Banquinas de ripio, tierra suelta y polvo invadiendo el borde del asfalto
-  const leftShoulder = ctx.createLinearGradient(0, 0, 95, 0);
-  leftShoulder.addColorStop(0, '#4a3e31');
-  leftShoulder.addColorStop(0.55, '#362f28');
-  leftShoulder.addColorStop(1, 'rgba(28,31,38,0)');
+  // 5. Banquinas de ripio, tierra volcánica y arena patagónica en los bordes
+  const leftShoulder = ctx.createLinearGradient(0, 0, 96, 0);
+  leftShoulder.addColorStop(0, '#42372a');
+  leftShoulder.addColorStop(0.60, '#302820');
+  leftShoulder.addColorStop(1, 'rgba(22,25,31,0)');
   ctx.fillStyle = leftShoulder;
-  ctx.fillRect(0, 0, 95, 1024);
+  ctx.fillRect(0, 0, 96, 1024);
 
-  const rightShoulder = ctx.createLinearGradient(929, 0, 1024, 0);
-  rightShoulder.addColorStop(0, 'rgba(28,31,38,0)');
-  rightShoulder.addColorStop(0.45, '#362f28');
-  rightShoulder.addColorStop(1, '#4a3e31');
+  const rightShoulder = ctx.createLinearGradient(928, 0, 1024, 0);
+  rightShoulder.addColorStop(0, 'rgba(22,25,31,0)');
+  rightShoulder.addColorStop(0.40, '#302820');
+  rightShoulder.addColorStop(1, '#42372a');
   ctx.fillStyle = rightShoulder;
-  ctx.fillRect(929, 0, 95, 1024);
+  ctx.fillRect(928, 0, 96, 1024);
 
-  // Bandas sonoras (Rumble strips) labradas con suciedad acumulada
-  ctx.fillStyle = 'rgba(12, 14, 18, 0.55)';
+  // Bandas sonoras (Rumble strips) labradas en los márgenes exteriores
+  ctx.fillStyle = 'rgba(10, 12, 16, 0.60)';
   for (let y = 0; y < 1024; y += 32) {
-    ctx.fillRect(42, y, 22, 14);
-    ctx.fillRect(960, y, 22, 14);
+    ctx.fillRect(40, y, 24, 15);
+    ctx.fillRect(960, y, 24, 15);
   }
 
-  // Doble línea amarilla central y líneas blancas laterales
-  ctx.fillStyle = '#d99b07';
-  ctx.fillRect(496, 0, 10, 1024);
-  ctx.fillRect(518, 0, 10, 1024);
+  // 6. Doble línea amarilla central y líneas blancas laterales con abrasión real
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(495, 0, 11, 1024);
+  ctx.fillRect(518, 0, 11, 1024);
 
-  ctx.fillStyle = '#dce3ec';
-  ctx.fillRect(68, 0, 14, 1024);
-  ctx.fillRect(942, 0, 14, 1024);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(66, 0, 14, 1024);
+  ctx.fillRect(944, 0, 14, 1024);
 
-  // Desgaste y suciedad sobre la pintura vial (para que no se vea pintura digital limpia)
-  for (let w = 0; w < 220; w++) {
+  // Desgaste, tránsito y suciedad sobre la pintura vial
+  for (let w = 0; w < 240; w++) {
     const wy = Math.random() * 1024;
-    const wh = 4 + Math.random() * 18;
-    ctx.fillStyle = 'rgba(27, 30, 36, 0.58)';
-    ctx.fillRect(494, wy, 36, wh);
-    ctx.fillStyle = 'rgba(54, 47, 40, 0.55)';
-    ctx.fillRect(65, (wy + 170) % 1024, 20, wh * 1.4);
-    ctx.fillRect(939, (wy + 410) % 1024, 20, wh * 1.4);
+    const wh = 4 + Math.random() * 20;
+    ctx.fillStyle = 'rgba(22, 25, 31, 0.65)';
+    ctx.fillRect(493, wy, 38, wh);
+    ctx.fillStyle = 'rgba(48, 40, 32, 0.58)';
+    ctx.fillRect(64, (wy + 170) % 1024, 20, wh * 1.5);
+    ctx.fillRect(941, (wy + 410) % 1024, 20, wh * 1.5);
   }
 
-  // Manchas irregulares de tierra y piedritas sueltas en los bordes
-  for (let g = 0; g < 450; g++) {
+  // Piedritas y sedimentos esparcidos por el viento en los márgenes
+  for (let g = 0; g < 500; g++) {
     const gx = Math.random() < 0.5 ? Math.random() * 135 : 889 + Math.random() * 135;
     const gy = Math.random() * 1024;
-    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(92, 78, 62, 0.45)' : 'rgba(24, 22, 19, 0.5)';
-    ctx.fillRect(gx, gy, 3 + Math.random() * 5, 3 + Math.random() * 5);
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(85, 72, 58, 0.55)' : 'rgba(20, 18, 15, 0.6)';
+    ctx.fillRect(gx, gy, 3 + Math.random() * 6, 3 + Math.random() * 6);
   }
 
-  // Roughness Map (huellas y manchas de aceite más reflectantes a contraluz)
-  rCtx.fillStyle = '#c2c2c2';
+  // 7. Roughness Map PBR Físico:
+  // - Huellas de caucho y centro aceitoso más reflectantes a la luz solar
+  // - Banquinas y asfalto sin tránsito más rugosos y mates
+  rCtx.fillStyle = '#b8b8b8';
   rCtx.fillRect(0, 0, 512, 512);
   const rGrad = rCtx.createLinearGradient(0, 0, 512, 0);
-  rGrad.addColorStop(0, '#eaeaea');
-  rGrad.addColorStop(0.20, '#5a5a5a');
-  rGrad.addColorStop(0.28, '#383838'); // Brillo aceitoso en la huella
-  rGrad.addColorStop(0.36, '#5a5a5a');
-  rGrad.addColorStop(0.50, '#b0b0b0');
-  rGrad.addColorStop(0.64, '#5a5a5a');
-  rGrad.addColorStop(0.72, '#383838');
-  rGrad.addColorStop(0.80, '#5a5a5a');
-  rGrad.addColorStop(1, '#eaeaea');
+  rGrad.addColorStop(0, '#e8e8e8');
+  rGrad.addColorStop(0.20, '#555555'); // Especularidad en la huella izq
+  rGrad.addColorStop(0.28, '#323232'); // Alto brillo en goteo de aceite
+  rGrad.addColorStop(0.36, '#555555'); // Especularidad en la huella der
+  rGrad.addColorStop(0.50, '#a8a8a8'); // Centro de la ruta mate
+  rGrad.addColorStop(0.64, '#555555');
+  rGrad.addColorStop(0.72, '#323232');
+  rGrad.addColorStop(0.80, '#555555');
+  rGrad.addColorStop(1, '#e8e8e8');
   rCtx.fillStyle = rGrad;
   rCtx.fillRect(0, 0, 512, 512);
 
-  // Normal Map con micro-relieve de piedras y grietas
+  // Micro-relieve y normales Sobel reales calculadas a partir del mapa de elevación
   const nImg = nCtx.createImageData(512, 512);
   const nd = nImg.data;
-  for (let i = 0; i < nd.length; i += 4) {
-    nd[i]     = 128 + (Math.random() - 0.5) * 58;
-    nd[i + 1] = 128 + (Math.random() - 0.5) * 58;
-    nd[i + 2] = 242;
-    nd[i + 3] = 255;
+  const strength = 3.2;
+
+  for (let y = 0; y < 512; y++) {
+    const yPrev = (y - 1 + 512) % 512;
+    const yNext = (y + 1) % 512;
+    for (let x = 0; x < 512; x++) {
+      const xPrev = (x - 1 + 512) % 512;
+      const xNext = (x + 1) % 512;
+
+      const dx = (heightData[y * 512 + xNext] - heightData[y * 512 + xPrev]) * strength;
+      const dy = (heightData[yNext * 512 + x] - heightData[yPrev * 512 + x]) * strength;
+
+      let nx = -dx;
+      let ny = -dy;
+      let nz = 1.0;
+      const len = Math.hypot(nx, ny, nz);
+      nx /= len; ny /= len; nz /= len;
+
+      const idx = (y * 512 + x) * 4;
+      nd[idx]     = Math.floor((nx * 0.5 + 0.5) * 255);
+      nd[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
+      nd[idx + 2] = Math.floor((nz * 0.5 + 0.5) * 255);
+      nd[idx + 3] = 255;
+    }
   }
   nCtx.putImageData(nImg, 0, 0);
 
   const diffTex = new THREE.CanvasTexture(diffCanvas);
   diffTex.wrapS = THREE.RepeatWrapping;
   diffTex.wrapT = THREE.RepeatWrapping;
-  diffTex.anisotropy = 8;
+  diffTex.anisotropy = 16;
 
   const roughTex = new THREE.CanvasTexture(roughCanvas);
   roughTex.wrapS = THREE.RepeatWrapping;
   roughTex.wrapT = THREE.RepeatWrapping;
+  roughTex.anisotropy = 8;
 
   const normTex = new THREE.CanvasTexture(normCanvas);
   normTex.wrapS = THREE.RepeatWrapping;
   normTex.wrapT = THREE.RepeatWrapping;
+  normTex.anisotropy = 16;
 
   return { diffTex, roughTex, normTex };
 }
@@ -458,47 +495,80 @@ function createTerrainPBRMaps() {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
 
-  // Base neutra texturizada (se multiplica por los vertexColors sin crear rayas blancas)
-  ctx.fillStyle = '#c8cebe';
+  // Base neutra mineral texturizada (se multiplica por vertexColors con profundidad orgánica)
+  ctx.fillStyle = '#b8beae';
   ctx.fillRect(0, 0, 512, 512);
 
   const img = ctx.getImageData(0, 0, 512, 512);
   const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() - 0.5) * 32;
-    d[i]     = Math.min(255, Math.max(0, d[i] + n));
-    d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + n));
-    d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + n));
+  const tHeight = new Float32Array(256 * 256);
+
+  for (let y = 0; y < 512; y++) {
+    for (let x = 0; x < 512; x++) {
+      const idx = (y * 512 + x) * 4;
+      const n = (Math.random() - 0.5) * 36;
+      const rock = Math.random() < 0.08 ? 26 : (Math.random() < 0.05 ? -22 : 0);
+      d[idx]     = Math.min(255, Math.max(0, d[idx] + n + rock));
+      d[idx + 1] = Math.min(255, Math.max(0, d[idx + 1] + n + rock));
+      d[idx + 2] = Math.min(255, Math.max(0, d[idx + 2] + n + rock));
+
+      if ((x % 2 === 0) && (y % 2 === 0)) {
+        tHeight[(y >> 1) * 256 + (x >> 1)] = (n + rock) * 0.02;
+      }
+    }
   }
   ctx.putImageData(img, 0, 0);
 
-  // Detalles orgánicos suaves (matas de pasto y grietas de roca)
-  ctx.fillStyle = 'rgba(40, 50, 35, 0.14)';
-  for (let i = 0; i < 600; i++) {
-    ctx.fillRect(Math.random() * 512, Math.random() * 512, 3 + Math.random() * 6, 3 + Math.random() * 6);
+  // Micro-matas de pasto coirón y fisuras de roca patagónica
+  ctx.fillStyle = 'rgba(35, 45, 30, 0.18)';
+  for (let i = 0; i < 750; i++) {
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 3 + Math.random() * 7, 2 + Math.random() * 6);
   }
 
+  // Mapa de normales Sobel para relieve rocoso real bajo la luz solar
   const nCanvas = document.createElement('canvas');
   nCanvas.width = 256;
   nCanvas.height = 256;
   const nCtx = nCanvas.getContext('2d');
   const nImg = nCtx.createImageData(256, 256);
-  for (let i = 0; i < nImg.data.length; i += 4) {
-    nImg.data[i]     = 128 + (Math.random() - 0.5) * 65;
-    nImg.data[i + 1] = 128 + (Math.random() - 0.5) * 65;
-    nImg.data[i + 2] = 238;
-    nImg.data[i + 3] = 255;
+  const nd = nImg.data;
+  const strength = 3.0;
+
+  for (let y = 0; y < 256; y++) {
+    const yPrev = (y - 1 + 256) % 256;
+    const yNext = (y + 1) % 256;
+    for (let x = 0; x < 256; x++) {
+      const xPrev = (x - 1 + 256) % 256;
+      const xNext = (x + 1) % 256;
+
+      const dx = (tHeight[y * 256 + xNext] - tHeight[y * 256 + xPrev]) * strength;
+      const dy = (tHeight[yNext * 256 + x] - tHeight[yPrev * 256 + x]) * strength;
+
+      let nx = -dx;
+      let ny = -dy;
+      let nz = 1.0;
+      const len = Math.hypot(nx, ny, nz);
+      nx /= len; ny /= len; nz /= len;
+
+      const idx = (y * 256 + x) * 4;
+      nd[idx]     = Math.floor((nx * 0.5 + 0.5) * 255);
+      nd[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
+      nd[idx + 2] = Math.floor((nz * 0.5 + 0.5) * 255);
+      nd[idx + 3] = 255;
+    }
   }
   nCtx.putImageData(nImg, 0, 0);
 
   const diff = new THREE.CanvasTexture(canvas);
   diff.wrapS = THREE.RepeatWrapping;
   diff.wrapT = THREE.RepeatWrapping;
+  diff.anisotropy = 16;
   diff.repeat.set(14, 24);
 
   const norm = new THREE.CanvasTexture(nCanvas);
   norm.wrapS = THREE.RepeatWrapping;
   norm.wrapT = THREE.RepeatWrapping;
+  norm.anisotropy = 16;
   norm.repeat.set(24, 40);
 
   return { diff, norm };
@@ -509,23 +579,25 @@ function createPineFoliageTexture() {
   c.width = 256;
   c.height = 256;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#183824';
+  ctx.fillStyle = '#142e1d';
   ctx.fillRect(0, 0, 256, 256);
 
-  // Miles de agujas de pino para evitar aspecto plástico liso
-  for (let i = 0; i < 1800; i++) {
+  // Micro-acículas de pino y ramas con profundidad y luces
+  for (let i = 0; i < 2200; i++) {
     const x = Math.random() * 256;
     const y = Math.random() * 256;
-    ctx.strokeStyle = Math.random() > 0.45 ? '#265437' : '#0f2618';
-    ctx.lineWidth = 1.5;
+    const r = Math.random();
+    ctx.strokeStyle = r > 0.6 ? '#2f6844' : (r > 0.25 ? '#1f482e' : '#0c1f13');
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + (Math.random() - 0.5) * 10, y + 6 + Math.random() * 8);
+    ctx.lineTo(x + (Math.random() - 0.5) * 12, y + 6 + Math.random() * 10);
     ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
   tex.repeat.set(3, 2);
   return tex;
 }
@@ -730,7 +802,7 @@ function createLightGlowTexture(colorStop0, colorStop1) {
 // 4. ESCENA, RENDERER Y SHADER ATMOSFÉRICO FISICAMENTE BASADO (SKY + HDRI)
 // ============================================================================
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0xc4d4e0, 0.0012);
+scene.fog = new THREE.FogExp2(0xc2d2e2, 0.00115);
 
 let width = window.innerWidth;
 let height = window.innerHeight;
@@ -743,7 +815,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.22;
 renderer.outputEncoding = THREE.sRGBEncoding;
 container.appendChild(renderer.domElement);
 
@@ -808,24 +880,30 @@ const skyFragmentShader = `
     vec3 dir = normalize(vWorldPosition);
     float elevation = max(dir.y, 0.0);
 
-    vec3 zenithColor = vec3(0.10, 0.26, 0.54);
-    vec3 midSkyColor = vec3(0.36, 0.60, 0.84);
-    vec3 horizonColor = vec3(0.86, 0.82, 0.76);
+    // Gradiente atmosférico Rayleigh ultra-realista con perspectiva aérea
+    vec3 zenithColor = vec3(0.08, 0.22, 0.52);
+    vec3 midSkyColor = vec3(0.34, 0.58, 0.82);
+    vec3 horizonColor = vec3(0.88, 0.82, 0.74);
 
-    vec3 sky = mix(horizonColor, midSkyColor, pow(elevation, 0.45));
-    sky = mix(sky, zenithColor, pow(elevation, 1.2));
+    vec3 sky = mix(horizonColor, midSkyColor, pow(elevation, 0.42));
+    sky = mix(sky, zenithColor, pow(elevation, 1.25));
 
+    // Sol con disco luminoso, corona dorada y dispersión Mie
     float sunAmt = max(dot(dir, normalize(uSunDir)), 0.0);
-    sky += vec3(1.0, 0.65, 0.32) * pow(sunAmt, 6.0) * 0.45;
-    sky += vec3(1.0, 0.92, 0.75) * pow(sunAmt, 64.0) * 0.8;
-    sky += vec3(1.0, 0.98, 0.9) * smoothstep(0.9985, 0.9996, sunAmt) * 2.5;
+    sky += vec3(1.0, 0.62, 0.28) * pow(sunAmt, 5.0) * 0.48;
+    sky += vec3(1.0, 0.90, 0.72) * pow(sunAmt, 48.0) * 0.95;
+    sky += vec3(1.0, 0.98, 0.92) * smoothstep(0.9982, 0.9997, sunAmt) * 3.2;
 
-    if (dir.y > 0.03) {
-      vec2 uv = dir.xz / (dir.y + 0.18) * 1.4 + vec2(uTime * 0.008, 0.0);
+    // Nubes FBM volumétricas con iluminación de bordes (Silver lining solar)
+    if (dir.y > 0.02) {
+      vec2 uv = dir.xz / (dir.y + 0.16) * 1.35 + vec2(uTime * 0.006, uTime * 0.002);
       float c = fbmCloud(uv);
-      float cloudMask = smoothstep(0.46, 0.76, c) * smoothstep(0.03, 0.22, dir.y);
-      vec3 cloudColor = mix(vec3(0.75, 0.78, 0.84), vec3(1.0, 0.95, 0.88), pow(sunAmt, 2.0));
-      sky = mix(sky, cloudColor, cloudMask * 0.75);
+      float c2 = fbmCloud(uv * 2.2 + 0.5);
+      float density = smoothstep(0.44, 0.78, c + c2 * 0.25) * smoothstep(0.02, 0.20, dir.y);
+      vec3 cloudBase = vec3(0.68, 0.74, 0.82);
+      vec3 cloudSunlit = vec3(1.0, 0.96, 0.90);
+      vec3 cloudColor = mix(cloudBase, cloudSunlit, pow(sunAmt, 1.8) * 0.85 + 0.15);
+      sky = mix(sky, cloudColor, density * 0.82);
     }
 
     gl_FragColor = vec4(sky, 1.0);
@@ -860,21 +938,23 @@ scene.environment = envRT.texture;
 // ============================================================================
 // 5. ILUMINACIÓN, CONTRASTE DRAMÁTICO Y SOMBRAS DE ALTA DENSIDAD
 // ============================================================================
-const hemiLight = new THREE.HemisphereLight(0xffedd5, 0x1e261c, 0.68);
+const hemiLight = new THREE.HemisphereLight(0xdfeaf8, 0x382e22, 0.78);
 scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xffe4b5, 2.35);
+const sunLight = new THREE.DirectionalLight(0xfff4de, 2.75);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 1.5;
-sunLight.shadow.camera.far = 220;
-const shadowCamSize = 42; // Frustum concentrado para sombras súper definidas en moto y ruta
+sunLight.shadow.camera.near = 1.0;
+sunLight.shadow.camera.far = 240;
+const shadowCamSize = 40; // Frustum concentrado para sombras nítidas y suaves en moto y ruta
 sunLight.shadow.camera.left = -shadowCamSize;
 sunLight.shadow.camera.right = shadowCamSize;
 sunLight.shadow.camera.top = shadowCamSize;
 sunLight.shadow.camera.bottom = -shadowCamSize;
-sunLight.shadow.bias = -0.0003;
+sunLight.shadow.bias = -0.00015;
+sunLight.shadow.normalBias = 0.024;
+sunLight.shadow.radius = 1.8;
 scene.add(sunLight);
 scene.add(sunLight.target);
 
@@ -904,10 +984,10 @@ const roadMat = new THREE.MeshStandardMaterial({
   map: asphaltMaps.diffTex,
   roughnessMap: asphaltMaps.roughTex,
   normalMap: asphaltMaps.normTex,
-  normalScale: new THREE.Vector2(0.58, 0.58),
-  roughness: 0.78,
-  metalness: 0.16,
-  envMapIntensity: 1.45,
+  normalScale: new THREE.Vector2(1.15, 1.15),
+  roughness: 1.0,
+  metalness: 0.12,
+  envMapIntensity: 1.65,
   side: THREE.DoubleSide
 });
 const roadMesh = new THREE.Mesh(roadGeo, roadMat);
@@ -929,9 +1009,9 @@ const terrainMaps = createTerrainPBRMaps();
 const terrainMat = new THREE.MeshStandardMaterial({
   map: terrainMaps.diff,
   normalMap: terrainMaps.norm,
-  normalScale: new THREE.Vector2(0.75, 0.75),
+  normalScale: new THREE.Vector2(0.95, 0.95),
   vertexColors: true,
-  roughness: 0.90,
+  roughness: 0.88,
   metalness: 0.04,
   side: THREE.DoubleSide
 });
@@ -947,12 +1027,12 @@ terrainColAttr.setUsage(THREE.DynamicDrawUsage);
 const waterNormTex = createWaterNormalMap();
 const waterGeo = new THREE.PlaneGeometry(3600, 3600);
 const waterMat = new THREE.MeshStandardMaterial({
-  color: 0x0d586e,
+  color: 0x0e5d74,
   normalMap: waterNormTex,
-  normalScale: new THREE.Vector2(0.42, 0.42),
-  roughness: 0.08,
-  metalness: 0.90,
-  envMapIntensity: 2.1
+  normalScale: new THREE.Vector2(0.48, 0.48),
+  roughness: 0.06,
+  metalness: 0.92,
+  envMapIntensity: 2.3
 });
 const waterMesh = new THREE.Mesh(waterGeo, waterMat);
 waterMesh.rotation.x = -Math.PI / 2;
@@ -962,8 +1042,8 @@ scene.add(waterMesh);
 // C2. Cordillera de los Andes Panorámica 360° en el Horizonte Lejano (Picos Nevados y Granito)
 function createDistantMountainRange() {
   const radSegs = 96;
-  const heightSegs = 14;
-  const geo = new THREE.CylinderGeometry(1650, 2100, 540, radSegs, heightSegs, true);
+  const heightSegs = 16;
+  const geo = new THREE.CylinderGeometry(1750, 2200, 600, radSegs, heightSegs, true);
   const pos = geo.attributes.position;
   const cols = new Float32Array(pos.count * 3);
 
@@ -973,31 +1053,36 @@ function createDistantMountainRange() {
     const vz = pos.getZ(i);
     const ang = Math.atan2(vz, vx);
     // Altura normalizada de la base (0) a la cumbre (1)
-    const hRatio = (vy + 270) / 540;
+    const hRatio = (vy + 300) / 600;
 
     // Perfil cordillerano dentado tipo Fitz Roy / Andes Patagónicos
-    const ridge1 = Math.abs(Math.sin(ang * 7.0 + 0.5)) * 1.15;
-    const ridge2 = Math.abs(Math.cos(ang * 15.0 - 1.2)) * 0.62;
-    const ridge3 = Math.sin(ang * 29.0) * 0.25;
-    const peakProfile = 0.38 + ridge1 * 0.55 + ridge2 * 0.35 + ridge3 * 0.15;
+    const ridge1 = Math.abs(Math.sin(ang * 7.0 + 0.5)) * 1.25;
+    const ridge2 = Math.abs(Math.cos(ang * 17.0 - 1.2)) * 0.75;
+    const ridge3 = Math.sin(ang * 33.0) * 0.30;
+    const peakProfile = 0.35 + ridge1 * 0.55 + ridge2 * 0.35 + ridge3 * 0.15;
 
-    const newY = -120 + Math.pow(hRatio, 1.25) * 520 * peakProfile;
-    const radNoise = 1.0 + (noise2D(Math.cos(ang) * 4.5, hRatio * 6.0) - 0.5) * 0.12 * hRatio;
+    const newY = -140 + Math.pow(hRatio, 1.22) * 580 * peakProfile;
+    const radNoise = 1.0 + (noise2D(Math.cos(ang) * 4.5, hRatio * 6.0) - 0.5) * 0.14 * hRatio;
     pos.setXYZ(i, vx * radNoise, newY, vz * radNoise);
 
-    // Colores por altitud: base boscosa oscura -> granito gris azulado -> nieve eterna iluminada por el sol
-    let r = 0.18, g = 0.24, b = 0.22;
-    if (newY > 215) {
-      // Cumbres nevadas con tinte cálido de hora dorada
-      r = 0.94; g = 0.93; b = 0.95;
-    } else if (newY > 110) {
-      // Paredones de granito andino con vetas de nieve
-      const snowMix = smoothstep(110, 215, newY);
-      r = 0.34 + snowMix * 0.56;
-      g = 0.38 + snowMix * 0.52;
-      b = 0.44 + snowMix * 0.48;
-    } else if (newY > 30) {
-      r = 0.26; g = 0.31; b = 0.34;
+    // Colores realistas con transición estratificada:
+    // Base bosque andino oscuro -> roca granítica gris cálida -> glaciares y cumbres nevadas
+    let r = 0.16, g = 0.22, b = 0.18;
+    if (newY > 230) {
+      // Glaciares y nieves eternas con tono cálido del sol bajo
+      const snowBr = THREE.MathUtils.clamp((newY - 230) / 110, 0, 1);
+      r = 0.88 + snowBr * 0.09;
+      g = 0.90 + snowBr * 0.08;
+      b = 0.94 + snowBr * 0.05;
+    } else if (newY > 115) {
+      // Farallones de granito andino
+      const rockRatio = (newY - 115) / 115;
+      r = 0.32 + rockRatio * 0.48;
+      g = 0.36 + rockRatio * 0.44;
+      b = 0.40 + rockRatio * 0.46;
+    } else if (newY > 35) {
+      // Laderas de piedra y bosque de altura
+      r = 0.22; g = 0.28; b = 0.26;
     }
     cols[i * 3]     = r;
     cols[i * 3 + 1] = g;
@@ -1010,9 +1095,9 @@ function createDistantMountainRange() {
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
     normalMap: terrainMaps.norm,
-    normalScale: new THREE.Vector2(0.85, 0.85),
-    roughness: 0.88,
-    metalness: 0.05,
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    roughness: 0.85,
+    metalness: 0.04,
     side: THREE.BackSide
   });
   const mesh = new THREE.Mesh(geo, mat);
@@ -1198,29 +1283,29 @@ const forestGroup = new THREE.Group();
 
 const pineNeedleTex = createPineFoliageTexture();
 const barkMat = new THREE.MeshStandardMaterial({
-  color: 0x3d281a,
+  color: 0x362316,
   normalMap: terrainMaps.norm,
-  roughness: 0.92
+  roughness: 0.90
 });
 const pineFoliageMat1 = new THREE.MeshStandardMaterial({
-  color: 0xb8d4be,
+  color: 0x244a30, // Verde bosque andino profundo
   map: pineNeedleTex,
-  roughness: 0.76
+  roughness: 0.70
 });
 const pineFoliageMat2 = new THREE.MeshStandardMaterial({
-  color: 0x9ec2a6,
+  color: 0x1a3824, // Verde conífera sombra de montaña
   map: pineNeedleTex,
-  roughness: 0.74
+  roughness: 0.68
 });
 const autumnLengaMat1 = new THREE.MeshStandardMaterial({
   color: 0xd97706, // Dorado ocre otoñal patagónico
   map: pineNeedleTex,
-  roughness: 0.78
+  roughness: 0.72
 });
 const autumnLengaMat2 = new THREE.MeshStandardMaterial({
   color: 0xb45309, // Ámbar rojizo de montaña
   map: pineNeedleTex,
-  roughness: 0.78
+  roughness: 0.72
 });
 const rockBoulderMat = new THREE.MeshStandardMaterial({
   color: 0x56606b,
@@ -1660,32 +1745,33 @@ const rubberPadMat = new THREE.MeshStandardMaterial({
 
 // A. Faro Delantero Redondo Clásico con Aro Cromado, Rejilla Scrambler y Guardabarros Alto
 const headlightGroup = new THREE.Group();
-headlightGroup.position.set(0, -0.18, -0.66);
+// Ubicado abajo y adelante sobre el eje de la horquilla inferior (no obstruye el campo de visión del piloto)
+headlightGroup.position.set(0, -0.42, -0.85);
 
 // Cazoleta redonda del faro (vista desde arriba por el piloto)
-const bowlGeo = new THREE.SphereGeometry(0.105, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.65);
+const bowlGeo = new THREE.SphereGeometry(0.10, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.65);
 const headlightBowl = new THREE.Mesh(bowlGeo, matteBlackMat);
 headlightBowl.rotation.x = -Math.PI / 2;
 headlightGroup.add(headlightBowl);
 
 // Aro cromado clásico del faro redondo
-const headlightRim = new THREE.Mesh(new THREE.TorusGeometry(0.102, 0.010, 16, 36), chromeBrightMat);
+const headlightRim = new THREE.Mesh(new THREE.TorusGeometry(0.098, 0.009, 16, 36), chromeBrightMat);
 headlightRim.position.set(0, 0, -0.035);
 headlightGroup.add(headlightRim);
 
 // Rejilla protectora de faro estilo Scrambler (barras horizontales negras)
 for (let g = -2; g <= 2; g++) {
-  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.19, 8), matteBlackMat);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.18, 8), matteBlackMat);
   bar.rotation.z = Math.PI / 2;
-  bar.position.set(0, g * 0.028, -0.048);
+  bar.position.set(0, g * 0.026, -0.046);
   headlightGroup.add(bar);
 }
 
 // Pequeña visera / placa portanúmero de aluminio cepillado sobre el faro (estilo Triumph 400 X)
-const flyscreenGeo = new THREE.CylinderGeometry(0.11, 0.12, 0.09, 24, 1, true, Math.PI * 0.72, Math.PI * 0.56);
+const flyscreenGeo = new THREE.CylinderGeometry(0.085, 0.095, 0.055, 24, 1, true, Math.PI * 0.72, Math.PI * 0.56);
 const flyscreen = new THREE.Mesh(flyscreenGeo, brushedAluminumMat);
-flyscreen.rotation.x = -0.45;
-flyscreen.position.set(0, 0.075, -0.01);
+flyscreen.rotation.x = -0.38;
+flyscreen.position.set(0, 0.042, -0.015);
 headlightGroup.add(flyscreen);
 
 // Guiños delanteros redondos tipo bala (Bullet Turn Signals) a los lados de la horquilla
@@ -1710,16 +1796,16 @@ headlightGroup.add(flyscreen);
 
 // Guardabarros delantero de aluminio cepillado y neumático con tacos Scrambler giratorio abajo adelante
 const frontFender = new THREE.Mesh(
-  new THREE.BoxGeometry(0.13, 0.015, 0.28),
+  new THREE.BoxGeometry(0.12, 0.012, 0.26),
   brushedAluminumMat
 );
-frontFender.position.set(0, -0.15, -0.10);
-frontFender.rotation.x = 0.20;
+frontFender.position.set(0, -0.12, -0.06);
+frontFender.rotation.x = 0.18;
 headlightGroup.add(frontFender);
 
 // Grupo giratorio de la rueda delantera con tacos Scrambler y disco de freno perforado
 const frontWheelSpinGroup = new THREE.Group();
-frontWheelSpinGroup.position.set(0, -0.44, -0.12);
+frontWheelSpinGroup.position.set(0, -0.28, -0.06);
 
 const frontTireCrown = new THREE.Mesh(
   new THREE.TorusGeometry(0.28, 0.068, 16, 36),
@@ -2481,6 +2567,7 @@ function updateHandlingPhysics(dt) {
     ? (-simState.steeringInput * 0.22 * (1.0 - simState.speed / 36))
     : (-simState.leanRate * 0.048 - simState.steeringInput * 0.038);
   steeringAssembly.rotation.y = THREE.MathUtils.lerp(steeringAssembly.rotation.y, barVisualAngle, 12.0 * dt);
+  headlightGroup.rotation.y = steeringAssembly.rotation.y * 0.85;
   frontWheelSpinGroup.rotation.x -= (speedMps * 3.2 + simState.rearWheelSpin * 12.0) * dt;
   mirrorReflTex.offset.x = (simState.bikeYaw * 0.25) + simState.leanAngle * 0.15;
 
@@ -2693,20 +2780,23 @@ function updateWorldMeshes() {
       const elevOffset = getTerrainElevationOffset(lateral, wx, wz);
       const wy = p.y + elevOffset;
 
-      let cr = 0.25, cg = 0.38, cb = 0.19; // Pasto cordillerano
+      let cr = 0.22, cg = 0.32, cb = 0.18; // Pasto y coirón andino natural
 
-      if (Math.abs(lateral) <= halfRoad + 2.2) {
-        // Banquina de tierra y ripio junto al asfalto
-        cr = 0.34; cg = 0.30; cb = 0.25;
-      } else if (elevOffset > 30) {
-        // Nieve en las altas cumbres
-        cr = 0.86; cg = 0.89; cb = 0.94;
-      } else if (elevOffset > 11) {
-        // Roca granítica de montaña
-        cr = 0.42; cg = 0.45; cb = 0.49;
+      if (Math.abs(lateral) <= halfRoad + 2.4) {
+        // Banquina de tierra volcánica, ripio y polvo junto al asfalto
+        cr = 0.32; cg = 0.27; cb = 0.22;
+      } else if (elevOffset > 32) {
+        // Cumbres nevadas con glaciares
+        cr = 0.90; cg = 0.92; cb = 0.96;
+      } else if (elevOffset > 12) {
+        // Roca granítica andina con gradiente natural continuo
+        const rockMix = THREE.MathUtils.clamp((elevOffset - 12) / 20, 0, 1);
+        cr = 0.35 + rockMix * 0.48;
+        cg = 0.38 + rockMix * 0.46;
+        cb = 0.42 + rockMix * 0.48;
       } else if (elevOffset < -6) {
-        // Orilla rocosa del lago glaciar
-        cr = 0.32; cg = 0.36; cb = 0.34;
+        // Costa rocosa de lago glaciar
+        cr = 0.26; cg = 0.32; cb = 0.32;
       }
 
       const vIdx = (i * TERRAIN_COLS + c) * 3;
