@@ -95,3 +95,4 @@ execSync(
 
 const stats = fs.statSync(ZIP_PATH);
 console.log(`Paquete portable generado con exito: ${ZIP_PATH} (${(stats.size / 1024).toFixed(1)} KB)`);
+

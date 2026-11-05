@@ -988,15 +988,20 @@ const simState = {
   money: 180,
   headlights: true,
 
-  // Dinámica de Conducción Realista
+  // Dinámica de Conducción, Trazada e Inercia Realista
   playerDistance: 0,
-  laneOffset: 2.2,     // Carril derecho por defecto (-4.5 a +4.5)
-  steeringInput: 0,    // -1 (izq) a +1 (der)
-  leanAngle: 0,        // Radianes de inclinación
-  pitchSuspension: 0,  // Hundimiento de horquilla
-  headLookApex: 0,     // Giro de cabeza al ápice
-  clutchPull: 0,       // Animación maneta embrague
-  brakePull: 0,        // Animación maneta freno
+  laneOffset: 2.2,       // Carril derecho por defecto (-4.5 a +4.5)
+  bikeHeadingRel: 0,     // Ángulo real de la trazada de la moto respecto al eje de la ruta (rad)
+  steeringInput: 0,      // -1 (izq) a +1 (der)
+  leanAngle: 0,          // Radianes de inclinación física
+  leanRate: 0,           // Velocidad angular de inclinación (efecto giroscópico)
+  pitchSuspension: 0,    // Cabeceo de horquilla (freno / aceleración)
+  suspensionOffset: 0,   // Compresión vertical del chasis sobre el asfalto (m)
+  suspensionVel: 0,      // Velocidad vertical de la suspensión
+  prevRoadY: 6.0,        // Altura previa del asfalto para calcular compresión en baches/pendientes
+  headLookApex: 0,       // Giro natural de la vista buscando el ápice de la curva
+  clutchPull: 0,         // Animación maneta embrague
+  brakePull: 0,          // Animación maneta freno
 
   targetDistanceKm: 16.0,
   odometer: 0,
@@ -1060,16 +1065,44 @@ function getRoadPoint(dist) {
 function getRoadOrientation(dist) {
   const p0 = getRoadPoint(dist);
   const p1 = getRoadPoint(dist + 2.0);
+  const p2 = getRoadPoint(dist + 4.0);
 
-  const dx = p1.x - p0.x;
-  const dy = p1.y - p0.y;
-  const dz = -(p1.z - p0.z);
+  const dx1 = p1.x - p0.x;
+  const dy1 = p1.y - p0.y;
+  const dz1 = -(p1.z - p0.z);
 
-  const yaw = -Math.atan2(dx, dz);
-  const pitch = -Math.atan2(dy, dz);
-  const roll = (dx / dz) * 0.32;
+  const dx2 = p2.x - p1.x;
+  const dz2 = -(p2.z - p1.z);
 
-  return { x: p0.x, y: p0.y, z: p0.z, yaw, pitch, roll, curveRate: dx / dz };
+  const yaw = -Math.atan2(dx1, dz1);
+  const yawNext = -Math.atan2(dx2, dz2);
+
+  // Curvatura real de la ruta (positiva = curva a la izquierda, negativa = curva a la derecha)
+  const curvature = (yawNext - yaw) / 2.0;
+
+  // Pendiente longitudinal real (positiva al subir cuesta, negativa al bajar)
+  const horizDist = Math.hypot(dx1, dz1);
+  const pitch = Math.atan2(dy1, horizDist);
+
+  // Peralte físico suave de la calzada en curvas
+  const roll = -curvature * 2.8;
+
+  // Vector perpendicular ortogonal exacto hacia la mano derecha de la ruta
+  const rightX = Math.cos(yaw);
+  const rightZ = -Math.sin(yaw);
+
+  return {
+    x: p0.x,
+    y: p0.y,
+    z: p0.z,
+    yaw,
+    pitch,
+    roll,
+    curvature,
+    curveRate: dx1 / dz1,
+    rightX,
+    rightZ
+  };
 }
 
 // ============================================================================
@@ -2450,9 +2483,9 @@ function createRealistic3DVehicle(type, colorHex, laneOffset, initialRelDist) {
 // 9. CABINA EN PRIMERA PERSONA: SCRAMBLER CLÁSICA CON TEXTURAS DE USO Y SUCIEDAD
 // ============================================================================
 const cockpitGroup = new THREE.Group();
-// Cámara posicionada más arriba y más atrás (a la altura real de los ojos del piloto sentado en el asiento)
-cockpitGroup.position.set(0, -0.26, -0.26);
-cockpitGroup.rotation.x = 0.16;
+// Posición del chasis respecto a los ojos del piloto sentado en la Scrambler (altura real sobre el asfalto)
+cockpitGroup.position.set(0, -0.22, -0.24);
+cockpitGroup.rotation.x = 0.14;
 
 const carbonWeaveTex = createCarbonWeaveTexture();
 const scramblerGreenMat = new THREE.MeshPhysicalMaterial({
@@ -3179,57 +3212,96 @@ function updateHandlingPhysics(dt) {
   leftSideBar.leverPivot.rotation.y = -simState.clutchPull * 0.25;
   rightSideBar.leverPivot.rotation.y = simState.brakePull * 0.25;
 
-  // 3. Dirección Natural (A = Izquierda, D = Derecha)
+  // 3. Física Realista de Inclinación (Efecto Giroscópico), Contramanillar y Trazada en Curva
   let steer = 0;
   if (keys.steerLeft) steer -= 1;
   if (keys.steerRight) steer += 1;
 
-  const steerSpeed = (simState.speed > 120 ? 5.2 : (simState.speed > 50 ? 6.8 : 8.2));
-  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, steerSpeed * dt);
-
-  const maxLean = 0.46; // ~26° de inclinación
-  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, 6.8 * dt);
-
-  const turnRate = 5.8 * Math.min(1.4, (simState.speed + 15) / 75);
-  simState.laneOffset += simState.steeringInput * turnRate * dt;
-  simState.laneOffset = Math.max(-4.9, Math.min(4.9, simState.laneOffset));
-
-  // Avance a lo largo de la ruta
+  // A mayor velocidad, el efecto giroscópico de las ruedas da más aplomo y peso al cambio de dirección
   const speedMps = simState.speed / 3.6;
-  simState.playerDistance += speedMps * dt;
+  const gyroStability = 1.0 / (1.0 + (simState.speed / 135) * 0.52);
 
+  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, 7.8 * dt);
+
+  const maxLean = 0.52; // ~30° de inclinación física máxima
+  const prevLean = simState.leanAngle;
+  const leanResponse = (steer !== 0 ? 6.2 : 4.4) * gyroStability;
+  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, leanResponse * dt);
+  simState.leanRate = (simState.leanAngle - prevLean) / Math.max(0.001, dt);
+
+  // Avance longitudinal a lo largo de la ruta
+  simState.playerDistance += speedMps * dt;
   const roadOri = getRoadOrientation(simState.playerDistance);
 
-  // Inercia centrífuga en curva
-  simState.laneOffset += roadOri.curveRate * (simState.speed / 100) * 1.5 * dt;
+  // Comportamiento de la Trazada (Trail-braking cierra la línea hacia el ápice; acelerar fuerte inclinado abre la salida)
+  const trailBrakeFactor = keys.brake ? 1.22 : (keys.throttle ? 0.88 : 1.04);
+
+  // Tasa de giro generada por la inclinación del neumático vs. curvatura de la carretera
+  const bikeTurnRate = Math.tan(simState.leanAngle) * 1.45 * trailBrakeFactor;
+  const roadCurvePush = roadOri.curvature * speedMps * 0.045;
+  const casterSelfAlign = -simState.bikeHeadingRel * (steer === 0 ? 3.8 : 1.5);
+
+  simState.bikeHeadingRel += (bikeTurnRate + roadCurvePush + casterSelfAlign) * dt;
+  simState.bikeHeadingRel = THREE.MathUtils.clamp(simState.bikeHeadingRel, -0.36, 0.36);
+
+  // Desplazamiento transversal sobre el asfalto (combina el rumbo real de la trazada + tallado del neumático + fuerza centrífuga)
+  const headingLateralVel = Math.sin(simState.bikeHeadingRel) * Math.max(7.0, speedMps) * 0.44;
+  const tireCarveVel = Math.tan(simState.leanAngle) * Math.min(1.4, (simState.speed + 18) / 68) * 3.9 * trailBrakeFactor;
+  const centrifugalOutwardDrift = roadOri.curvature * Math.pow(speedMps / 27, 1.35) * 2.2;
+
+  simState.laneOffset += (headingLateralVel + tireCarveVel + centrifugalOutwardDrift) * dt;
+  simState.laneOffset = THREE.MathUtils.clamp(simState.laneOffset, -5.0, 5.0);
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.3);
 
-  // Mirada hacia el ápice de la curva
-  const targetLook = -simState.steeringInput * 0.085;
-  simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.5 * dt);
+  // Mirada natural del piloto anticipando el ápice de la curva
+  const targetLook = -simState.leanAngle * 0.24 - roadOri.curvature * 1.8;
+  simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.2 * dt);
 
-  // Posición de la cámara sobre la moto
-  const perpX = Math.cos(roadOri.yaw);
-  const perpZ = Math.sin(roadOri.yaw);
+  // Trabajo dinámico de la suspensión sobre los cambios de pendiente y frenado
+  const roadSlopeImpulse = (roadOri.y - simState.prevRoadY) / Math.max(0.001, dt);
+  simState.prevRoadY = roadOri.y;
+  const targetSusp = THREE.MathUtils.clamp(
+    -roadSlopeImpulse * 0.006 + simState.pitchSuspension * 0.65 + (simState.onRumble ? (Math.random() - 0.5) * 0.035 : 0),
+    -0.08,
+    0.06
+  );
+  simState.suspensionOffset = THREE.MathUtils.lerp(simState.suspensionOffset, targetSusp, 11.0 * dt);
 
-  const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.007;
-  const vib = (simState.rpm / simState.maxRpm) * 0.004 + (simState.onRumble ? 0.022 : 0) + speedWindBuffet;
+  // Vector perpendicular ortogonal exacto de la calzada
+  const perpX = roadOri.rightX;
+  const perpZ = roadOri.rightZ;
 
-  camera.position.x = roadOri.x + (perpX * simState.laneOffset) + (Math.random() - 0.5) * vib;
-  // Vista real a la altura de los ojos del piloto sentado erguido en el asiento de la Scrambler
-  camera.position.y = roadOri.y + 1.92 + (Math.random() - 0.5) * vib;
-  camera.position.z = roadOri.z + (perpZ * simState.laneOffset);
+  const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.006;
+  const vib = (simState.rpm / simState.maxRpm) * 0.0035 + (simState.onRumble ? 0.020 : 0) + speedWindBuffet;
 
-  camera.rotation.set(0, 0, 0);
-  camera.rotation.y = roadOri.yaw + simState.headLookApex;
-  camera.rotation.x = roadOri.pitch - 0.055 + simState.pitchSuspension;
-  camera.rotation.z = -simState.leanAngle * 0.74 + roadOri.roll;
+  // Pivote físico en el parche de contacto del neumático con el asfalto:
+  // Al inclinar la moto, el casco se desplaza hacia el interior de la curva y baja acercándose al asfalto
+  const bodyInsideShift = Math.sin(simState.leanAngle) * 0.54;
+  const effectiveLateral = simState.laneOffset + bodyInsideShift;
 
-  camera.fov = 64 + (simState.speed / simState.maxSpeed) * 11;
+  // Altura real sobre el asfalto (1.34m sentado erguido sobre el asfalto + descenso físico por inclinación)
+  const asphaltSurfaceY = roadOri.y + 0.04;
+  const riderEyeHeight = 1.34;
+  const leanHeightDrop = (1.0 - Math.cos(simState.leanAngle)) * 1.18;
+
+  camera.position.x = roadOri.x + (perpX * effectiveLateral) + (Math.random() - 0.5) * vib;
+  camera.position.y = asphaltSurfaceY + riderEyeHeight - leanHeightDrop + simState.suspensionOffset + (Math.random() - 0.5) * vib;
+  camera.position.z = roadOri.z + (perpZ * effectiveLateral);
+
+  // Orden Euler 'YXZ' para evitar deformación cruzada entre rumbo, pendiente e inclinación en curvas
+  camera.rotation.order = 'YXZ';
+  const bikeWorldYaw = roadOri.yaw - simState.bikeHeadingRel * 0.68;
+  camera.rotation.y = bikeWorldYaw + simState.headLookApex;
+  camera.rotation.x = roadOri.pitch - 0.042 + simState.pitchSuspension;
+  camera.rotation.z = -simState.leanAngle * 0.72 + roadOri.roll;
+
+  camera.fov = 63 + (simState.speed / simState.maxSpeed) * 11;
   camera.updateProjectionMatrix();
 
-  // Contramanillar sutil, giro real del neumático delantero con tacos y reflejo en espejos
-  steeringAssembly.rotation.y = -simState.steeringInput * 0.065;
+  // El chasis de la moto se inclina bajo el piloto y el manillar ejecuta el gesto físico de contramanillar
+  cockpitGroup.rotation.z = -simState.leanAngle * 0.22;
+  cockpitGroup.position.y = -0.22 + simState.pitchSuspension * 0.35;
+  steeringAssembly.rotation.y = -simState.leanRate * 0.045 - simState.steeringInput * 0.042;
   frontWheelSpinGroup.rotation.x -= speedMps * 3.2 * dt;
   mirrorReflTex.offset.x = simState.leanAngle * 0.15;
 
@@ -3242,12 +3314,12 @@ function updateHandlingPhysics(dt) {
   sunLight.target.position.set(camera.position.x, camera.position.y, camera.position.z - 25);
   sunLight.target.updateMatrixWorld();
 
-  // Faro delantero sigue la moto
+  // Faro delantero sigue la trazada real de la moto
   motoHeadlight.position.copy(camera.position);
   motoHeadlight.target.position.set(
-    camera.position.x - Math.sin(roadOri.yaw) * 40,
-    camera.position.y - 0.5,
-    camera.position.z - Math.cos(roadOri.yaw) * 40
+    camera.position.x - Math.sin(bikeWorldYaw) * 42,
+    camera.position.y - 0.55,
+    camera.position.z - Math.cos(bikeWorldYaw) * 42
   );
   motoHeadlight.target.updateMatrixWorld();
 
@@ -3277,14 +3349,14 @@ function updateHandlingPhysics(dt) {
   }
   dustGeo.attributes.position.needsUpdate = true;
 
-  // Actualizar Árboles 3D y Rocas usando la función exacta de elevación del terreno
+  // Actualizar Árboles 3D y Rocas usando el vector perpendicular ortogonal exacto
   natureObjects.forEach(p => {
     let pDist = simState.playerDistance + p.distAhead;
     const pt = getRoadPoint(pDist);
     const ori = getRoadOrientation(pDist);
 
-    const px = Math.cos(ori.yaw) * p.offsetLateral;
-    const pz = Math.sin(ori.yaw) * p.offsetLateral;
+    const px = ori.rightX * p.offsetLateral;
+    const pz = ori.rightZ * p.offsetLateral;
     const wx = pt.x + px;
     const wz = pt.z + pz;
 
@@ -3312,7 +3384,7 @@ function updateHandlingPhysics(dt) {
     }
   });
 
-  // Actualizar Tráfico 3D y rotación de sus ruedas
+  // Actualizar Tráfico 3D y rotación de sus ruedas sobre su carril ortogonal
   vehicles.forEach(v => {
     if (v.laneOffset < 0) {
       v.distAhead -= ((v.speed + simState.speed) / 3.6) * dt;
@@ -3330,8 +3402,8 @@ function updateHandlingPhysics(dt) {
     const vp = getRoadPoint(vDist);
     const vOri = getRoadOrientation(vDist);
 
-    const vx = Math.cos(vOri.yaw) * v.laneOffset;
-    const vz = Math.sin(vOri.yaw) * v.laneOffset;
+    const vx = vOri.rightX * v.laneOffset;
+    const vz = vOri.rightZ * v.laneOffset;
 
     v.mesh.position.set(vp.x + vx, vp.y, vp.z + vz);
     v.mesh.rotation.set(0, 0, 0);
@@ -3402,8 +3474,8 @@ function updateWorldMeshes() {
     const p = getRoadPoint(sampleDist);
     const ori = getRoadOrientation(sampleDist);
 
-    const nx = Math.cos(ori.yaw);
-    const nz = Math.sin(ori.yaw);
+    const nx = ori.rightX;
+    const nz = ori.rightZ;
 
     // 1. Vértices del Asfalto y Coordenadas UV continuas en espacio mundial
     const idxL = i * 2 * 3;
