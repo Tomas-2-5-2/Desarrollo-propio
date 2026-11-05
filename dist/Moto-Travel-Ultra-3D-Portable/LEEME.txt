@@ -1,0 +1,20 @@
+====================================================================
+   MOTO-TRAVEL ULTRA 3D - EDICION PORTABLE OFFLINE (SCRAMBLER 650)  
+====================================================================
+
+COMO JUGAR (SIN INSTALAR NADA NI NECESITAR INTERNET):
+  1. Extrae esta carpeta en cualquier lugar de tu PC.
+  2. Haz doble clic en "Jugar-Moto-Travel.bat" para abrir el simulador
+     en una ventana de juego dedicada, o abre directamente el archivo
+     "Moto-Travel-Offline.html" en cualquier navegador.
+
+CONTROLES EN RUTA:
+  - W / Flecha Arriba      : Acelerar
+  - S / Flecha Abajo       : Freno combinado
+  - A / D o Flechas Izq/Der: Doblar e inclinar la Scrambler
+  - E                      : Subir marcha (1a a 6a)
+  - Q                      : Bajar marcha (6a a Neutro)
+  - L                      : Encender / Apagar faro delantero
+  - H                      : Bocina
+  - F                      : Pantalla Completa
+====================================================================
