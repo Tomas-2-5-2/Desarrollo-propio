@@ -46,11 +46,15 @@ const simState = {
   money: 180,
   headlights: true,
 
-  // Dinámica de Conducción Sandbox 360°, Trazada Libre e Inercia Realista
+  // Dinámica de Conducción Sandbox 360°, Trazada Puntual y Física Asfalto vs. Tierra
   bikeInitialized: false,
   bikeX: 0,              // Posición X real en el mundo 3D
   bikeZ: 0,              // Posición Z real en el mundo 3D
-  bikeYaw: 0,            // Rumbo 360° libre sin límites (permite dar la vuelta entera / U-turn)
+  bikeYaw: 0,            // Rumbo 360° libre (solo cambia cuando la moto rueda, nunca parada sobre su eje)
+  velX: 0,               // Velocidad real en X (bloqueada al neumático en asfalto, con deriva en tierra)
+  velZ: 0,               // Velocidad real en Z
+  surfaceType: 'asphalt',// 'asphalt' | 'shoulder' | 'dirt'
+  rearWheelSpin: 0,      // Patinamiento de rueda trasera en tierra al acelerar fuerte
   playerDistance: 0,     // Estación longitudinal más cercana sobre la ruta
   laneOffset: 2.2,       // Desplazamiento lateral respecto al eje de la ruta (libre / off-road)
   steeringInput: 0,      // -1 (izq) a +1 (der)
@@ -60,6 +64,7 @@ const simState = {
   suspensionOffset: 0,   // Compresión vertical del chasis sobre el suelo (m)
   suspensionVel: 0,      // Velocidad vertical de la suspensión
   prevGroundY: 6.0,      // Altura previa del suelo para calcular trabajo de suspensión
+  groundPitch: 0,        // Pendiente longitudinal real bajo las ruedas
   headLookApex: 0,       // Giro natural de la vista buscando el interior del giro
   clutchPull: 0,         // Animación maneta embrague
   brakePull: 0,          // Animación maneta freno
@@ -2259,39 +2264,76 @@ function gameLoop(now) {
 }
 
 function updateHandlingPhysics(dt) {
+  if (!simState.bikeInitialized) {
+    const initOri = getRoadOrientation(simState.playerDistance);
+    simState.bikeX = initOri.x + initOri.rightX * simState.laneOffset;
+    simState.bikeZ = initOri.z + initOri.rightZ * simState.laneOffset;
+    simState.bikeYaw = initOri.yaw;
+    simState.prevGroundY = initOri.y + 0.04;
+    simState.bikeInitialized = true;
+  }
+
   const currentGear = simState.gear;
   const maxGearSpeed = simState.gearLimits[currentGear];
   const minGearSpeed = simState.gearMinSpeed[currentGear];
 
-  // 1. Acelerador y Curva de Potencia
+  // Clasificación física de la superficie actual (Asfalto vs. Banquina de Ripio vs. Tierra/Montaña)
+  const absLat = Math.abs(simState.laneOffset);
+  const halfRoad = ROAD_WIDTH / 2;
+  const isAsphalt = absLat <= halfRoad;
+  const isShoulder = absLat > halfRoad && absLat <= halfRoad + 2.4;
+  const isDirt = absLat > halfRoad + 2.4;
+  const isOffRoad = !isAsphalt;
+
+  simState.surfaceType = isAsphalt ? 'asphalt' : (isShoulder ? 'shoulder' : 'dirt');
+  const surfaceGrip = isAsphalt ? 1.0 : (isShoulder ? 0.68 : 0.54);
+
+  // Resistencia a la rodadura del suelo y efecto real de la gravedad en subidas/bajadas
+  const rollingDrag = isAsphalt ? 0.0 : (isShoulder ? 5.5 + simState.speed * 0.05 : 12.5 + simState.speed * 0.14);
+  const slopeGravityForce = Math.sin(simState.groundPitch) * 38.0; // Positivo al subir (frena), negativo al bajar (impulsa)
+
+  // 1. Acelerador, Tracción en Asfalto vs. Patinamiento en Tierra y Curva de Potencia
   if (keys.throttle) {
     if (currentGear === 0) {
       simState.rpm = Math.min(simState.maxRpm, simState.rpm + 7000 * dt);
+      simState.rearWheelSpin = THREE.MathUtils.lerp(simState.rearWheelSpin, 0, 8 * dt);
       simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, 0, 0.1);
     } else {
       const inPowerBand = (simState.rpm >= 4000 && simState.rpm <= 8200);
-      const accelBoost = inPowerBand ? 1.38 : 0.82;
+      const accelBoost = inPowerBand ? 1.38 : 0.85;
+
+      // En tierra y marchas bajas, abrir el gas a fondo genera patinamiento de la rueda trasera con tacos
+      const spinTarget = (isOffRoad && currentGear <= 3) ? (0.35 * (4 - currentGear) * (1.1 - surfaceGrip)) : 0;
+      simState.rearWheelSpin = THREE.MathUtils.lerp(simState.rearWheelSpin, spinTarget, 6.0 * dt);
+
+      const tractionEff = isAsphalt ? 1.0 : (isShoulder ? 0.84 : 0.72);
 
       if (simState.speed < minGearSpeed - 15) {
-        simState.speed = Math.max(0, simState.speed + 6.5 * dt);
+        simState.speed = Math.max(0, simState.speed + (7.5 * tractionEff - slopeGravityForce * 0.5) * dt);
       } else {
         const topRatio = Math.max(0, 1 - (simState.speed / maxGearSpeed));
-        simState.speed = Math.min(simState.maxSpeed, simState.speed + (34 * accelBoost * topRatio) * dt);
+        const netAccel = (34 * accelBoost * topRatio * tractionEff) - rollingDrag - slopeGravityForce;
+        simState.speed = Math.max(0, Math.min(simState.maxSpeed, simState.speed + netAccel * dt));
       }
 
       const gearRatio = simState.speed / maxGearSpeed;
-      simState.rpm = simState.idleRpm + (gearRatio * (simState.redlineRpm - simState.idleRpm));
+      const spinRpmBoost = simState.rearWheelSpin * 1650;
+      simState.rpm = Math.min(
+        simState.maxRpm,
+        simState.idleRpm + (gearRatio * (simState.redlineRpm - simState.idleRpm)) + spinRpmBoost
+      );
       simState.fuelLiters = Math.max(0, simState.fuelLiters - (0.007 + (simState.rpm / simState.maxRpm) * 0.02) * dt);
 
-      simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, 0.026, 0.08);
+      simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, isAsphalt ? 0.026 : 0.034, 0.08);
     }
   } else {
+    simState.rearWheelSpin = THREE.MathUtils.lerp(simState.rearWheelSpin, 0, 8 * dt);
     if (currentGear === 0) {
       simState.rpm = Math.max(simState.idleRpm, simState.rpm - 4500 * dt);
-      simState.speed = Math.max(0, simState.speed - 9 * dt);
+      simState.speed = Math.max(0, simState.speed - (9 + rollingDrag + slopeGravityForce) * dt);
       simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, 0, 0.1);
     } else {
-      const engineBraking = 10 + (currentGear === 1 ? 16 : 8);
+      const engineBraking = 10 + (currentGear === 1 ? 16 : 8) + rollingDrag + slopeGravityForce;
       simState.speed = Math.max(0, simState.speed - engineBraking * dt);
       const gearRatio = simState.speed / maxGearSpeed;
       simState.rpm = Math.max(simState.idleRpm, simState.idleRpm + (gearRatio * (simState.redlineRpm - simState.idleRpm)));
@@ -2299,12 +2341,15 @@ function updateHandlingPhysics(dt) {
     }
   }
 
-  // 2. Freno y Hundimiento de Horquilla (Fork Dive)
+  // 2. Freno Diferenciado en Asfalto (Mordida Firme) vs. Tierra/Ripio (Menor Agarre y Bloqueo en Grava)
   if (keys.brake) {
-    simState.speed = Math.max(0, simState.speed - 58 * dt);
-    simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, -0.055, 0.16);
+    const brakeDecel = isAsphalt ? 60.0 : (isShoulder ? 41.0 : 32.0);
+    simState.speed = Math.max(0, simState.speed - brakeDecel * dt);
+    simState.pitchSuspension = THREE.MathUtils.lerp(simState.pitchSuspension, isAsphalt ? -0.056 : -0.042, 0.16);
     simState.brakePull = THREE.MathUtils.lerp(simState.brakePull, 1.0, 0.25);
-    if (simState.speed > 55 && Math.random() < 0.06) {
+
+    const lockThreshold = isAsphalt ? 65 : 28;
+    if (simState.speed > lockThreshold && Math.random() < (isAsphalt ? 0.05 : 0.12)) {
       window.soundEngine.playTireScreech();
     }
   } else {
@@ -2316,49 +2361,70 @@ function updateHandlingPhysics(dt) {
   leftSideBar.leverPivot.rotation.y = -simState.clutchPull * 0.25;
   rightSideBar.leverPivot.rotation.y = simState.brakePull * 0.25;
 
-  // 3. Conducción Sandbox 360° Libre (Giro Completo / U-Turn, Trazada Real y Off-Road)
-  if (!simState.bikeInitialized) {
-    const initOri = getRoadOrientation(simState.playerDistance);
-    simState.bikeX = initOri.x + initOri.rightX * simState.laneOffset;
-    simState.bikeZ = initOri.z + initOri.rightZ * simState.laneOffset;
-    simState.bikeYaw = initOri.yaw;
-    simState.prevGroundY = initOri.y + 0.04;
-    simState.bikeInitialized = true;
-  }
-
+  // 3. Cinemática Real de Moto (Cero Giro Parada, Trazada Puntual en Asfalto y Deriva en Tierra)
   let steer = 0;
   if (keys.steerLeft) steer -= 1;
   if (keys.steerRight) steer += 1;
 
   const speedMps = simState.speed / 3.6;
-  const gyroStability = 1.0 / (1.0 + (simState.speed / 140) * 0.45);
+  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, 7.5 * dt);
 
-  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, 8.2 * dt);
+  // Estando parada (speed = 0), la moto NO se inclina ni gira sobre su propio eje; solo empieza a inclinar al rodar
+  const rollingFactor = smoothstep(0.2, 4.5, simState.speed); // 0 absoluto cuando está parada
+  const leanSpeedScale = smoothstep(2.0, 38.0, simState.speed);
 
-  // La inclinación física acompaña la velocidad; a muy baja velocidad la moto gira con el manillar más erguida
-  const speedLeanScale = THREE.MathUtils.clamp((simState.speed + 8) / 42, 0.22, 1.0);
-  const maxLean = 0.54 * speedLeanScale;
+  // En asfalto el grip permite inclinar hasta 31° (0.54 rad); en tierra se dobla más erguido (~22°, 0.38 rad)
+  const surfaceMaxLean = isAsphalt ? 0.54 : (isShoulder ? 0.43 : 0.38);
+  const targetLean = simState.steeringInput * surfaceMaxLean * leanSpeedScale * rollingFactor;
+
+  const gyroStability = 1.0 / (1.0 + (simState.speed / 130) * 0.55);
   const prevLean = simState.leanAngle;
-  const leanResponse = (steer !== 0 ? 6.5 : 4.8) * gyroStability;
-  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, leanResponse * dt);
+  const leanResponse = (steer !== 0 ? 5.6 : 4.5) * gyroStability;
+  simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, targetLean, (simState.speed < 1.0 ? 8.0 : leanResponse) * dt);
   simState.leanRate = (simState.leanAngle - prevLean) / Math.max(0.001, dt);
 
-  // Trail-braking cierra el radio de giro; acelerar fuerte inclinado abre suavemente la línea
-  const trailBrakeFactor = keys.brake ? 1.22 : (keys.throttle ? 0.92 : 1.05);
+  // Trail-braking cierra la trazada hacia el ápice; abrir el gas inclinado en asfalto abre suavemente la salida
+  const trailBrakeFactor = keys.brake ? (isAsphalt ? 1.18 : 0.92) : (keys.throttle ? (isAsphalt ? 0.91 : 1.15) : 1.03);
 
-  // Giro 360° completamente libre sin bloqueos (combina giro por inclinación + giro directo de manillar a baja velocidad)
-  const lowSpeedBarTurn = simState.steeringInput * 1.45 * Math.max(0.18, 1.0 - simState.speed / 65);
-  const leanCarveTurn = Math.tan(simState.leanAngle) * 1.55 * Math.min(1.35, (simState.speed + 10) / 45);
-  const totalYawRate = (leanCarveTurn + lowSpeedBarTurn) * trailBrakeFactor;
+  // A) Giro cinemático a baja velocidad por ángulo de manillar: omega = (v / R_min) * steer
+  // Como tiene speedMps en el numerador, si speedMps == 0 el giro es 0.000 rad/s (nunca gira sobre su eje parada)
+  const minTurnRadius = isAsphalt ? 5.4 : 6.4; // Radio mínimo real de vuelta en U (~5.4m)
+  const lowSpeedBlend = Math.max(0.0, 1.0 - simState.speed / 44.0);
+  const kinematicBarYawRate = simState.steeringInput * (speedMps / minTurnRadius) * lowSpeedBlend;
+
+  // B) Giro dinámico en velocidad por inclinación física: omega = (g * tan(leanAngle)) / v
+  // Esto hace que a alta velocidad la moto lleve una trazada muy puntual, estable y proporcional al radio v^2/(g*tan)
+  const effVelForLean = Math.max(6.8, speedMps * 0.82);
+  const dynamicLeanYawRate = ((11.2 * Math.tan(simState.leanAngle)) / effVelForLean) * rollingFactor * surfaceGrip;
+
+  // C) Derrape controlado de cola en tierra (Power-Slide Scrambler al abrir el gas inclinado en ripio/tierra)
+  const dirtPowerSlideYawRate = isOffRoad ? (simState.steeringInput * simState.rearWheelSpin * 0.85 * rollingFactor) : 0;
+
+  const totalYawRate = (kinematicBarYawRate + dynamicLeanYawRate) * trailBrakeFactor + dirtPowerSlideYawRate;
 
   // En Three.js: +Yaw gira a la izquierda (steer < 0), -Yaw gira a la derecha (steer > 0)
   simState.bikeYaw -= totalYawRate * dt;
 
-  // Avance real 3D en la dirección exacta a la que apunta la moto (permite dar la vuelta entera 180°/360° e ir en sentido contrario)
+  // Vector hacia donde apunta la rueda delantera
   const fwdX = -Math.sin(simState.bikeYaw);
   const fwdZ = -Math.cos(simState.bikeYaw);
-  simState.bikeX += fwdX * speedMps * dt;
-  simState.bikeZ += fwdZ * speedMps * dt;
+
+  // En asfalto la velocidad sigue la trazada del neumático con precisión quirúrgica;
+  // en tierra/ripio existe inercia y ángulo de deriva lateral (slip angle) antes de que los tacos muerdan
+  const targetVelX = fwdX * speedMps;
+  const targetVelZ = fwdZ * speedMps;
+  const lateralGripRate = isAsphalt ? 16.0 : (isShoulder ? 5.2 : 3.4);
+
+  if (simState.speed < 0.15) {
+    simState.velX = 0;
+    simState.velZ = 0;
+  } else {
+    simState.velX = THREE.MathUtils.lerp(simState.velX, targetVelX, Math.min(1.0, lateralGripRate * dt));
+    simState.velZ = THREE.MathUtils.lerp(simState.velZ, targetVelZ, Math.min(1.0, lateralGripRate * dt));
+  }
+
+  simState.bikeX += simState.velX * dt;
+  simState.bikeZ += simState.velZ * dt;
 
   // Calcular estación de ruta más cercana, desplazamiento lateral libre y altura exacta del suelo bajo las ruedas
   const centerInfo = getClosestRoadInfo(simState.bikeX, simState.bikeZ);
@@ -2374,22 +2440,24 @@ function updateHandlingPhysics(dt) {
     simState.laneOffset = clampedLat;
   }
 
-  const isOffRoad = Math.abs(simState.laneOffset) > (ROAD_WIDTH / 2);
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.3);
 
   // Pendiente real 3D calculada entre la rueda trasera y la rueda delantera en cualquier ángulo de giro (0° a 360°)
   const fInfo = getClosestRoadInfo(simState.bikeX + fwdX * 0.75, simState.bikeZ + fwdZ * 0.75);
   const rInfo = getClosestRoadInfo(simState.bikeX - fwdX * 0.75, simState.bikeZ - fwdZ * 0.75);
   const groundPitch = THREE.MathUtils.clamp(Math.atan2(fInfo.groundY - rInfo.groundY, 1.50), -0.45, 0.45);
+  simState.groundPitch = groundPitch;
 
-  // Mirada natural del piloto hacia el interior del giro
-  const targetLook = -simState.steeringInput * 0.11;
+  // Mirada natural del piloto anticipando la trazada cuando la moto está en movimiento
+  const targetLook = -simState.leanAngle * 0.22 - simState.steeringInput * 0.05 * rollingFactor;
   simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.5 * dt);
 
-  // Trabajo dinámico de la suspensión sobre el asfalto, banquinas o terreno off-road
+  // Trabajo dinámico de la suspensión: firme en asfalto, absorbente sobre piedras y ondulaciones en tierra
   const groundVertVel = (centerInfo.groundY - simState.prevGroundY) / Math.max(0.001, dt);
   simState.prevGroundY = centerInfo.groundY;
-  const offRoadBump = isOffRoad ? (Math.sin(simState.bikeX * 1.7 + simState.bikeZ * 1.7) * 0.028 * Math.min(1, simState.speed / 35)) : 0;
+  const offRoadBump = isOffRoad
+    ? (Math.sin(simState.bikeX * 2.1 + simState.bikeZ * 1.9) * (isDirt ? 0.038 : 0.022) * Math.min(1, simState.speed / 28))
+    : 0;
   const targetSusp = THREE.MathUtils.clamp(
     -groundVertVel * 0.005 + simState.pitchSuspension * 0.65 + offRoadBump,
     -0.09,
@@ -2398,7 +2466,10 @@ function updateHandlingPhysics(dt) {
   simState.suspensionOffset = THREE.MathUtils.lerp(simState.suspensionOffset, targetSusp, 11.0 * dt);
 
   const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.006;
-  const vib = (simState.rpm / simState.maxRpm) * 0.0035 + (simState.onRumble ? (isOffRoad ? 0.026 : 0.016) : 0) + speedWindBuffet;
+  const surfaceVibration = isAsphalt
+    ? (simState.onRumble ? 0.014 : 0)
+    : ((isDirt ? 0.026 : 0.018) * Math.min(1.0, simState.speed / 25));
+  const vib = (simState.rpm / simState.maxRpm) * 0.0035 + surfaceVibration + speedWindBuffet;
 
   // Vector perpendicular derecho de la propia moto para el desplazamiento del torso al inclinar
   const bikeRightX = Math.cos(simState.bikeYaw);
@@ -2422,11 +2493,14 @@ function updateHandlingPhysics(dt) {
   camera.fov = 63 + (simState.speed / simState.maxSpeed) * 11;
   camera.updateProjectionMatrix();
 
-  // El chasis de la moto se inclina bajo el piloto y el manillar acompaña el contramanillar / giro
+  // El chasis de la moto se inclina bajo el piloto y el manillar muestra giro directo a baja velocidad y contramanillar en velocidad
   cockpitGroup.rotation.z = -simState.leanAngle * 0.22;
-  cockpitGroup.position.y = -0.22 + simState.pitchSuspension * 0.35;
-  steeringAssembly.rotation.y = -simState.leanRate * 0.042 - simState.steeringInput * (simState.speed < 35 ? 0.14 : 0.045);
-  frontWheelSpinGroup.rotation.x -= speedMps * 3.2 * dt;
+  cockpitGroup.position.y = -0.22 + simState.pitchSuspension * 0.35 + offRoadBump * 0.35;
+  const barVisualAngle = simState.speed < 28
+    ? (-simState.steeringInput * 0.22 * (1.0 - simState.speed / 36))
+    : (-simState.leanRate * 0.048 - simState.steeringInput * 0.038);
+  steeringAssembly.rotation.y = THREE.MathUtils.lerp(steeringAssembly.rotation.y, barVisualAngle, 12.0 * dt);
+  frontWheelSpinGroup.rotation.x -= (speedMps * 3.2 + simState.rearWheelSpin * 12.0) * dt;
   mirrorReflTex.offset.x = (simState.bikeYaw * 0.25) + simState.leanAngle * 0.15;
 
   // Actualizar la luz solar y su frustum de sombras para que siga al jugador
@@ -2837,7 +2911,10 @@ function updateGps() {
   const current = window.WaypointSystem.getCurrent();
   if (current) {
     gpsTarget.textContent = current.name.split('-')[0];
-    gpsRoute.textContent = `${current.biome.toUpperCase()} // ${current.roadCondition.toUpperCase()}`;
+    const surfLabel = simState.surfaceType === 'asphalt'
+      ? current.roadCondition.toUpperCase()
+      : (simState.surfaceType === 'shoulder' ? 'BANQUINA DE RIPIO (GRIP 68%)' : 'TIERRA / OFF-ROAD (GRIP 54%)');
+    gpsRoute.textContent = `${current.biome.toUpperCase()} // ${surfLabel}`;
   }
   gpsDist.textContent = simState.targetDistanceKm.toFixed(1) + " km";
   if (simState.speed > 5) {
