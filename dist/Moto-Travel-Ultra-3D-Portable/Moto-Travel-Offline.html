@@ -1915,8 +1915,8 @@ const contactShadowMat = new THREE.MeshBasicMaterial({
 // ============================================================================
 // 6. TERRENO 3D CONTINUO (BANQUINAS SUAVES, ACANTILADOS, VALLE Y LAGO)
 // ============================================================================
-const RIBBON_POINTS = 200;
-const POINT_STEP = 3.5;
+const RIBBON_POINTS = 280;
+const POINT_STEP = 4.5;
 const ROAD_WIDTH = 11.4;
 
 // A. Carretera PBR con Normal Map, Roughness Map, Parches y Suciedad Vial
@@ -1934,13 +1934,15 @@ const roadMat = new THREE.MeshStandardMaterial({
 });
 const roadMesh = new THREE.Mesh(roadGeo, roadMat);
 roadMesh.receiveShadow = true;
+// Desactivar frustum culling estático para que la ruta infinita nunca desaparezca en la distancia
+roadMesh.frustumCulled = false;
 scene.add(roadMesh);
 const roadPosAttr = roadGeo.attributes.position;
 const roadUvAttr = roadGeo.attributes.uv;
 roadPosAttr.setUsage(THREE.DynamicDrawUsage);
 roadUvAttr.setUsage(THREE.DynamicDrawUsage);
 
-// B. Malla de Terreno 3D con Transición Suave de Banquinas (40 columnas x 120 filas)
+// B. Malla de Terreno 3D con Transición Suave de Banquinas (40 columnas x 280 filas)
 const TERRAIN_COLS = 40;
 const terrainGeo = new THREE.PlaneGeometry(320, (RIBBON_POINTS - 1) * POINT_STEP, TERRAIN_COLS - 1, RIBBON_POINTS - 1);
 const terrainVertexCount = terrainGeo.attributes.position.count;
@@ -1959,6 +1961,8 @@ const terrainMat = new THREE.MeshStandardMaterial({
 });
 const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
 terrainMesh.receiveShadow = true;
+// Desactivar frustum culling estático para que el terreno infinito nunca desaparezca
+terrainMesh.frustumCulled = false;
 scene.add(terrainMesh);
 const terrainPosAttr = terrainGeo.attributes.position;
 const terrainColAttr = terrainGeo.attributes.color;
@@ -2075,12 +2079,14 @@ const guardrailMat = new THREE.MeshStandardMaterial({
 const guardrailMesh = new THREE.Mesh(guardrailGeo, guardrailMat);
 guardrailMesh.castShadow = true;
 guardrailMesh.receiveShadow = true;
+guardrailMesh.frustumCulled = false;
 scene.add(guardrailMesh);
 const guardrailPosAttr = guardrailGeo.attributes.position;
 guardrailPosAttr.setUsage(THREE.DynamicDrawUsage);
 
 // E. Tachas Reflectantes, Postes Telegráficos, Arbustos Secos (Coirón) y Carteles de Ruta 40
 const catEyesGroup = new THREE.Group();
+catEyesGroup.frustumCulled = false;
 const catEyeGeo = new THREE.BoxGeometry(0.16, 0.035, 0.22);
 const catEyeMat = new THREE.MeshStandardMaterial({
   color: 0xfbbf24,
@@ -2378,7 +2384,7 @@ function getClosestRoadInfo(wx, wz) {
   let bestDist = centerD;
   let minSq = Infinity;
 
-  for (let d = centerD - 36; d <= centerD + 36; d += 4.0) {
+  for (let d = centerD - 60; d <= centerD + 60; d += 3.0) {
     const p = getRoadPoint(d);
     const sq = (wx - p.x) * (wx - p.x) + (wz - p.z) * (wz - p.z);
     if (sq < minSq) {
@@ -3758,6 +3764,9 @@ function updateWorldMeshes() {
   terrainPosAttr.needsUpdate = true;
   terrainColAttr.needsUpdate = true;
   terrainGeo.computeVertexNormals();
+  roadGeo.computeBoundingSphere();
+  guardrailGeo.computeBoundingSphere();
+  terrainGeo.computeBoundingSphere();
 }
 
 // ============================================================================
