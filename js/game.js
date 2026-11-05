@@ -943,18 +943,18 @@ scene.add(hemiLight);
 
 const sunLight = new THREE.DirectionalLight(0xfff4de, 2.75);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.mapSize.width = 4096;
+sunLight.shadow.mapSize.height = 4096;
 sunLight.shadow.camera.near = 1.0;
 sunLight.shadow.camera.far = 240;
-const shadowCamSize = 40; // Frustum concentrado para sombras nítidas y suaves en moto y ruta
+const shadowCamSize = 36; // Frustum concentrado de alta densidad para sombras 4K ultra-nítidas y suaves en moto y ruta
 sunLight.shadow.camera.left = -shadowCamSize;
 sunLight.shadow.camera.right = shadowCamSize;
 sunLight.shadow.camera.top = shadowCamSize;
 sunLight.shadow.camera.bottom = -shadowCamSize;
-sunLight.shadow.bias = -0.00015;
-sunLight.shadow.normalBias = 0.024;
-sunLight.shadow.radius = 1.8;
+sunLight.shadow.bias = -0.00008;
+sunLight.shadow.normalBias = 0.035;
+sunLight.shadow.radius = 2.2;
 scene.add(sunLight);
 scene.add(sunLight.target);
 
@@ -2268,6 +2268,94 @@ cockpitGroup.traverse((child) => {
 camera.add(cockpitGroup);
 scene.add(camera);
 
+// Proxy 3D invisible a cámara que proyecta la silueta real del piloto y la moto sobre la ruta
+function createBikeAndRiderShadowProxy() {
+  const group = new THREE.Group();
+
+  const proxyMat = new THREE.MeshBasicMaterial({
+    colorWrite: false,
+    depthWrite: false
+  });
+  const depthMat = new THREE.MeshDepthMaterial({
+    depthPacking: THREE.RGBADepthPacking
+  });
+
+  function addProxyPart(geo, x, y, z, rx = 0, ry = 0, rz = 0) {
+    const mesh = new THREE.Mesh(geo, proxyMat);
+    mesh.customDepthMaterial = depthMat;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.position.set(x, y, z);
+    if (rx || ry || rz) mesh.rotation.set(rx, ry, rz);
+    group.add(mesh);
+    return mesh;
+  }
+
+  // 1. Casco clásico de moto (silueta aerodinámica y visera)
+  addProxyPart(new THREE.SphereGeometry(0.165, 16, 12), 0, 1.34, 0.04);
+
+  // 2. Torso, hombros y campera de cuero del piloto inclinado hacia adelante
+  addProxyPart(new THREE.BoxGeometry(0.48, 0.58, 0.28), 0, 0.98, 0.16, 0.22, 0, 0);
+
+  // 3. Brazos del piloto extendidos hacia el manillar
+  [-0.22, 0.22].forEach(ax => {
+    addProxyPart(new THREE.CylinderGeometry(0.065, 0.055, 0.44, 10), ax, 0.96, -0.06, 0.75, 0, ax > 0 ? -0.22 : 0.22);
+  });
+
+  // 4. Piernas y botas del piloto sobre los estribos
+  [-0.19, 0.19].forEach(lx => {
+    addProxyPart(new THREE.CylinderGeometry(0.09, 0.075, 0.42, 10), lx, 0.62, 0.08, 0.85, 0, lx > 0 ? -0.15 : 0.15);
+    addProxyPart(new THREE.CylinderGeometry(0.075, 0.065, 0.38, 10), lx * 1.08, 0.34, 0.24, -0.25, 0, 0);
+  });
+
+  // 5. Asiento Scrambler largo y colín trasero
+  addProxyPart(new THREE.BoxGeometry(0.24, 0.12, 0.65), 0, 0.74, 0.35);
+
+  // 6. Bloque motor bicilíndrico 650cc, cárter y caja de cambios
+  addProxyPart(new THREE.BoxGeometry(0.32, 0.36, 0.48), 0, 0.42, -0.05);
+
+  // 7. Curvas de escape gemelas y silenciador cónico lateral
+  addProxyPart(new THREE.CylinderGeometry(0.045, 0.065, 0.85, 12), 0.18, 0.36, 0.35, 1.48, 0, 0.06);
+
+  // 8. Rueda trasera con neumático Scrambler
+  const rearWheel = addProxyPart(new THREE.CylinderGeometry(0.33, 0.33, 0.14, 20), 0, 0.33, 0.68, 0, 0, Math.PI / 2);
+
+  // 9. Rueda delantera
+  const frontWheel = addProxyPart(new THREE.CylinderGeometry(0.34, 0.34, 0.11, 20), 0, 0.34, -0.84, 0, 0, Math.PI / 2);
+
+  return { group, frontWheel, rearWheel };
+}
+
+function createBikeContactShadow() {
+  const group = new THREE.Group();
+
+  // Huella de sombra de contacto bajo rueda delantera
+  const frontAo = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.52), contactShadowMat);
+  frontAo.rotation.x = -Math.PI / 2;
+  frontAo.position.set(0, 0.045, -0.84);
+  group.add(frontAo);
+
+  // Huella de sombra de contacto bajo rueda trasera
+  const rearAo = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.58), contactShadowMat);
+  rearAo.rotation.x = -Math.PI / 2;
+  rearAo.position.set(0, 0.045, 0.68);
+  group.add(rearAo);
+
+  // Sombra difusa del chasis y motor sobre el asfalto
+  const centerAo = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.95), contactShadowMat);
+  centerAo.rotation.x = -Math.PI / 2;
+  centerAo.position.set(0, 0.044, -0.05);
+  group.add(centerAo);
+
+  return group;
+}
+
+const bikeShadowProxy = createBikeAndRiderShadowProxy();
+scene.add(bikeShadowProxy.group);
+
+const bikeContactShadowGroup = createBikeContactShadow();
+scene.add(bikeContactShadowGroup);
+
 // ============================================================================
 // 10. CONTROLES Y TECLADO
 // ============================================================================
@@ -2576,6 +2664,19 @@ function updateHandlingPhysics(dt) {
   headlightGroup.rotation.y = steeringAssembly.rotation.y * 0.85;
   frontWheelSpinGroup.rotation.x -= (speedMps * 3.2 + simState.rearWheelSpin * 12.0) * dt;
   mirrorReflTex.offset.x = (simState.bikeYaw * 0.25) + simState.leanAngle * 0.15;
+
+  // Actualizar el proxy de sombra 3D del piloto y la moto en coordenadas de mundo
+  bikeShadowProxy.group.position.set(simState.bikeX, centerInfo.groundY, simState.bikeZ);
+  bikeShadowProxy.group.rotation.order = 'YXZ';
+  bikeShadowProxy.group.rotation.y = simState.bikeYaw;
+  bikeShadowProxy.group.rotation.x = groundPitch;
+  bikeShadowProxy.group.rotation.z = -simState.leanAngle;
+  bikeShadowProxy.frontWheel.rotation.x -= (speedMps * 3.2) * dt;
+  bikeShadowProxy.rearWheel.rotation.x -= (speedMps * 3.2) * dt;
+
+  // Actualizar las huellas de sombra de contacto (Ambient Occlusion) sobre el asfalto bajo las ruedas
+  bikeContactShadowGroup.position.set(simState.bikeX, centerInfo.groundY, simState.bikeZ);
+  bikeContactShadowGroup.rotation.y = simState.bikeYaw;
 
   // Actualizar la luz solar y su frustum de sombras para que siga al jugador
   sunLight.position.set(
