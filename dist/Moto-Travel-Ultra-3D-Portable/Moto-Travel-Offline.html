@@ -988,18 +988,21 @@ const simState = {
   money: 180,
   headlights: true,
 
-  // Dinámica de Conducción, Trazada e Inercia Realista
-  playerDistance: 0,
-  laneOffset: 2.2,       // Carril derecho por defecto (-4.5 a +4.5)
-  bikeHeadingRel: 0,     // Ángulo real de la trazada de la moto respecto al eje de la ruta (rad)
+  // Dinámica de Conducción Sandbox 360°, Trazada Libre e Inercia Realista
+  bikeInitialized: false,
+  bikeX: 0,              // Posición X real en el mundo 3D
+  bikeZ: 0,              // Posición Z real en el mundo 3D
+  bikeYaw: 0,            // Rumbo 360° libre sin límites (permite dar la vuelta entera / U-turn)
+  playerDistance: 0,     // Estación longitudinal más cercana sobre la ruta
+  laneOffset: 2.2,       // Desplazamiento lateral respecto al eje de la ruta (libre / off-road)
   steeringInput: 0,      // -1 (izq) a +1 (der)
   leanAngle: 0,          // Radianes de inclinación física
   leanRate: 0,           // Velocidad angular de inclinación (efecto giroscópico)
   pitchSuspension: 0,    // Cabeceo de horquilla (freno / aceleración)
-  suspensionOffset: 0,   // Compresión vertical del chasis sobre el asfalto (m)
+  suspensionOffset: 0,   // Compresión vertical del chasis sobre el suelo (m)
   suspensionVel: 0,      // Velocidad vertical de la suspensión
-  prevRoadY: 6.0,        // Altura previa del asfalto para calcular compresión en baches/pendientes
-  headLookApex: 0,       // Giro natural de la vista buscando el ápice de la curva
+  prevGroundY: 6.0,      // Altura previa del suelo para calcular trabajo de suspensión
+  headLookApex: 0,       // Giro natural de la vista buscando el interior del giro
   clutchPull: 0,         // Animación maneta embrague
   brakePull: 0,          // Animación maneta freno
 
@@ -1827,7 +1830,7 @@ const contactShadowMat = new THREE.MeshBasicMaterial({
 // ============================================================================
 // 6. TERRENO 3D CONTINUO (BANQUINAS SUAVES, ACANTILADOS, VALLE Y LAGO)
 // ============================================================================
-const RIBBON_POINTS = 120;
+const RIBBON_POINTS = 200;
 const POINT_STEP = 3.5;
 const ROAD_WIDTH = 11.4;
 
@@ -2277,6 +2280,49 @@ function getTerrainElevationOffset(lateral, wx, wz) {
       return -11.5 + farFade * (Math.pow(dFar, 1.32) * 0.48 + nVal * 38.0);
     }
   }
+}
+
+// Encuentra el punto más cercano de la carretera y la altura exacta del suelo para cualquier coordenada 3D (wx, wz)
+function getClosestRoadInfo(wx, wz) {
+  const centerD = -wz;
+  let bestDist = centerD;
+  let minSq = Infinity;
+
+  for (let d = centerD - 36; d <= centerD + 36; d += 4.0) {
+    const p = getRoadPoint(d);
+    const sq = (wx - p.x) * (wx - p.x) + (wz - p.z) * (wz - p.z);
+    if (sq < minSq) {
+      minSq = sq;
+      bestDist = d;
+    }
+  }
+  for (let step = 2.0; step >= 0.125; step *= 0.5) {
+    const pMinus = getRoadPoint(bestDist - step);
+    const pPlus = getRoadPoint(bestDist + step);
+    const sqMinus = (wx - pMinus.x) * (wx - pMinus.x) + (wz - pMinus.z) * (wz - pMinus.z);
+    const sqPlus = (wx - pPlus.x) * (wx - pPlus.x) + (wz - pPlus.z) * (wz - pPlus.z);
+    if (sqMinus < minSq) {
+      minSq = sqMinus;
+      bestDist -= step;
+    } else if (sqPlus < minSq) {
+      minSq = sqPlus;
+      bestDist += step;
+    }
+  }
+
+  const roadOri = getRoadOrientation(bestDist);
+  const dx = wx - roadOri.x;
+  const dz = wz - roadOri.z;
+  const lateral = dx * roadOri.rightX + dz * roadOri.rightZ;
+  const halfRoad = ROAD_WIDTH / 2;
+  const groundY = roadOri.y + (Math.abs(lateral) <= halfRoad ? 0.04 : getTerrainElevationOffset(lateral, wx, wz));
+
+  return {
+    roadDist: bestDist,
+    lateral,
+    groundY,
+    roadOri
+  };
 }
 
 const natureObjects = [];
@@ -3212,98 +3258,118 @@ function updateHandlingPhysics(dt) {
   leftSideBar.leverPivot.rotation.y = -simState.clutchPull * 0.25;
   rightSideBar.leverPivot.rotation.y = simState.brakePull * 0.25;
 
-  // 3. Física Realista de Inclinación (Efecto Giroscópico), Contramanillar y Trazada en Curva
+  // 3. Conducción Sandbox 360° Libre (Giro Completo / U-Turn, Trazada Real y Off-Road)
+  if (!simState.bikeInitialized) {
+    const initOri = getRoadOrientation(simState.playerDistance);
+    simState.bikeX = initOri.x + initOri.rightX * simState.laneOffset;
+    simState.bikeZ = initOri.z + initOri.rightZ * simState.laneOffset;
+    simState.bikeYaw = initOri.yaw;
+    simState.prevGroundY = initOri.y + 0.04;
+    simState.bikeInitialized = true;
+  }
+
   let steer = 0;
   if (keys.steerLeft) steer -= 1;
   if (keys.steerRight) steer += 1;
 
-  // A mayor velocidad, el efecto giroscópico de las ruedas da más aplomo y peso al cambio de dirección
   const speedMps = simState.speed / 3.6;
-  const gyroStability = 1.0 / (1.0 + (simState.speed / 135) * 0.52);
+  const gyroStability = 1.0 / (1.0 + (simState.speed / 140) * 0.45);
 
-  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, 7.8 * dt);
+  simState.steeringInput = THREE.MathUtils.lerp(simState.steeringInput, steer, 8.2 * dt);
 
-  const maxLean = 0.52; // ~30° de inclinación física máxima
+  // La inclinación física acompaña la velocidad; a muy baja velocidad la moto gira con el manillar más erguida
+  const speedLeanScale = THREE.MathUtils.clamp((simState.speed + 8) / 42, 0.22, 1.0);
+  const maxLean = 0.54 * speedLeanScale;
   const prevLean = simState.leanAngle;
-  const leanResponse = (steer !== 0 ? 6.2 : 4.4) * gyroStability;
+  const leanResponse = (steer !== 0 ? 6.5 : 4.8) * gyroStability;
   simState.leanAngle = THREE.MathUtils.lerp(simState.leanAngle, simState.steeringInput * maxLean, leanResponse * dt);
   simState.leanRate = (simState.leanAngle - prevLean) / Math.max(0.001, dt);
 
-  // Avance longitudinal a lo largo de la ruta
-  simState.playerDistance += speedMps * dt;
-  const roadOri = getRoadOrientation(simState.playerDistance);
+  // Trail-braking cierra el radio de giro; acelerar fuerte inclinado abre suavemente la línea
+  const trailBrakeFactor = keys.brake ? 1.22 : (keys.throttle ? 0.92 : 1.05);
 
-  // Comportamiento de la Trazada (Trail-braking cierra la línea hacia el ápice; acelerar fuerte inclinado abre la salida)
-  const trailBrakeFactor = keys.brake ? 1.22 : (keys.throttle ? 0.88 : 1.04);
+  // Giro 360° completamente libre sin bloqueos (combina giro por inclinación + giro directo de manillar a baja velocidad)
+  const lowSpeedBarTurn = simState.steeringInput * 1.45 * Math.max(0.18, 1.0 - simState.speed / 65);
+  const leanCarveTurn = Math.tan(simState.leanAngle) * 1.55 * Math.min(1.35, (simState.speed + 10) / 45);
+  const totalYawRate = (leanCarveTurn + lowSpeedBarTurn) * trailBrakeFactor;
 
-  // Tasa de giro generada por la inclinación del neumático vs. curvatura de la carretera
-  const bikeTurnRate = Math.tan(simState.leanAngle) * 1.45 * trailBrakeFactor;
-  const roadCurvePush = roadOri.curvature * speedMps * 0.045;
-  const casterSelfAlign = -simState.bikeHeadingRel * (steer === 0 ? 3.8 : 1.5);
+  // En Three.js: +Yaw gira a la izquierda (steer < 0), -Yaw gira a la derecha (steer > 0)
+  simState.bikeYaw -= totalYawRate * dt;
 
-  simState.bikeHeadingRel += (bikeTurnRate + roadCurvePush + casterSelfAlign) * dt;
-  simState.bikeHeadingRel = THREE.MathUtils.clamp(simState.bikeHeadingRel, -0.36, 0.36);
+  // Avance real 3D en la dirección exacta a la que apunta la moto (permite dar la vuelta entera 180°/360° e ir en sentido contrario)
+  const fwdX = -Math.sin(simState.bikeYaw);
+  const fwdZ = -Math.cos(simState.bikeYaw);
+  simState.bikeX += fwdX * speedMps * dt;
+  simState.bikeZ += fwdZ * speedMps * dt;
 
-  // Desplazamiento transversal sobre el asfalto (combina el rumbo real de la trazada + tallado del neumático + fuerza centrífuga)
-  const headingLateralVel = Math.sin(simState.bikeHeadingRel) * Math.max(7.0, speedMps) * 0.44;
-  const tireCarveVel = Math.tan(simState.leanAngle) * Math.min(1.4, (simState.speed + 18) / 68) * 3.9 * trailBrakeFactor;
-  const centrifugalOutwardDrift = roadOri.curvature * Math.pow(speedMps / 27, 1.35) * 2.2;
+  // Calcular estación de ruta más cercana, desplazamiento lateral libre y altura exacta del suelo bajo las ruedas
+  const centerInfo = getClosestRoadInfo(simState.bikeX, simState.bikeZ);
+  const roadOri = centerInfo.roadOri;
+  simState.playerDistance = centerInfo.roadDist;
+  simState.laneOffset = centerInfo.lateral;
 
-  simState.laneOffset += (headingLateralVel + tireCarveVel + centrifugalOutwardDrift) * dt;
-  simState.laneOffset = THREE.MathUtils.clamp(simState.laneOffset, -5.0, 5.0);
+  // Limitar únicamente a los bordes extremos de la malla de terreno de 320m para no caer al vacío
+  if (Math.abs(simState.laneOffset) > 145) {
+    const clampedLat = Math.sign(simState.laneOffset) * 145;
+    simState.bikeX = roadOri.x + roadOri.rightX * clampedLat;
+    simState.bikeZ = roadOri.z + roadOri.rightZ * clampedLat;
+    simState.laneOffset = clampedLat;
+  }
+
+  const isOffRoad = Math.abs(simState.laneOffset) > (ROAD_WIDTH / 2);
   simState.onRumble = (Math.abs(simState.laneOffset) > 4.3);
 
-  // Mirada natural del piloto anticipando el ápice de la curva
-  const targetLook = -simState.leanAngle * 0.24 - roadOri.curvature * 1.8;
-  simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.2 * dt);
+  // Pendiente real 3D calculada entre la rueda trasera y la rueda delantera en cualquier ángulo de giro (0° a 360°)
+  const fInfo = getClosestRoadInfo(simState.bikeX + fwdX * 0.75, simState.bikeZ + fwdZ * 0.75);
+  const rInfo = getClosestRoadInfo(simState.bikeX - fwdX * 0.75, simState.bikeZ - fwdZ * 0.75);
+  const groundPitch = THREE.MathUtils.clamp(Math.atan2(fInfo.groundY - rInfo.groundY, 1.50), -0.45, 0.45);
 
-  // Trabajo dinámico de la suspensión sobre los cambios de pendiente y frenado
-  const roadSlopeImpulse = (roadOri.y - simState.prevRoadY) / Math.max(0.001, dt);
-  simState.prevRoadY = roadOri.y;
+  // Mirada natural del piloto hacia el interior del giro
+  const targetLook = -simState.steeringInput * 0.11;
+  simState.headLookApex = THREE.MathUtils.lerp(simState.headLookApex, targetLook, 5.5 * dt);
+
+  // Trabajo dinámico de la suspensión sobre el asfalto, banquinas o terreno off-road
+  const groundVertVel = (centerInfo.groundY - simState.prevGroundY) / Math.max(0.001, dt);
+  simState.prevGroundY = centerInfo.groundY;
+  const offRoadBump = isOffRoad ? (Math.sin(simState.bikeX * 1.7 + simState.bikeZ * 1.7) * 0.028 * Math.min(1, simState.speed / 35)) : 0;
   const targetSusp = THREE.MathUtils.clamp(
-    -roadSlopeImpulse * 0.006 + simState.pitchSuspension * 0.65 + (simState.onRumble ? (Math.random() - 0.5) * 0.035 : 0),
-    -0.08,
-    0.06
+    -groundVertVel * 0.005 + simState.pitchSuspension * 0.65 + offRoadBump,
+    -0.09,
+    0.07
   );
   simState.suspensionOffset = THREE.MathUtils.lerp(simState.suspensionOffset, targetSusp, 11.0 * dt);
 
-  // Vector perpendicular ortogonal exacto de la calzada
-  const perpX = roadOri.rightX;
-  const perpZ = roadOri.rightZ;
-
   const speedWindBuffet = Math.pow(Math.max(0, simState.speed - 110) / 85, 2) * 0.006;
-  const vib = (simState.rpm / simState.maxRpm) * 0.0035 + (simState.onRumble ? 0.020 : 0) + speedWindBuffet;
+  const vib = (simState.rpm / simState.maxRpm) * 0.0035 + (simState.onRumble ? (isOffRoad ? 0.026 : 0.016) : 0) + speedWindBuffet;
 
-  // Pivote físico en el parche de contacto del neumático con el asfalto:
-  // Al inclinar la moto, el casco se desplaza hacia el interior de la curva y baja acercándose al asfalto
-  const bodyInsideShift = Math.sin(simState.leanAngle) * 0.54;
-  const effectiveLateral = simState.laneOffset + bodyInsideShift;
+  // Vector perpendicular derecho de la propia moto para el desplazamiento del torso al inclinar
+  const bikeRightX = Math.cos(simState.bikeYaw);
+  const bikeRightZ = -Math.sin(simState.bikeYaw);
+  const bodyInsideShift = Math.sin(simState.leanAngle) * 0.52;
 
-  // Altura real sobre el asfalto (1.34m sentado erguido sobre el asfalto + descenso físico por inclinación)
-  const asphaltSurfaceY = roadOri.y + 0.04;
+  // Altura realista de los ojos sobre el suelo (1.34m sentado en la Scrambler + descenso físico al inclinar)
   const riderEyeHeight = 1.34;
   const leanHeightDrop = (1.0 - Math.cos(simState.leanAngle)) * 1.18;
 
-  camera.position.x = roadOri.x + (perpX * effectiveLateral) + (Math.random() - 0.5) * vib;
-  camera.position.y = asphaltSurfaceY + riderEyeHeight - leanHeightDrop + simState.suspensionOffset + (Math.random() - 0.5) * vib;
-  camera.position.z = roadOri.z + (perpZ * effectiveLateral);
+  camera.position.x = simState.bikeX + (bikeRightX * bodyInsideShift) + (Math.random() - 0.5) * vib;
+  camera.position.y = centerInfo.groundY + riderEyeHeight - leanHeightDrop + simState.suspensionOffset + (Math.random() - 0.5) * vib;
+  camera.position.z = simState.bikeZ + (bikeRightZ * bodyInsideShift);
 
-  // Orden Euler 'YXZ' para evitar deformación cruzada entre rumbo, pendiente e inclinación en curvas
+  // Orden Euler 'YXZ' para giro 360° limpio sin deformación de horizonte
   camera.rotation.order = 'YXZ';
-  const bikeWorldYaw = roadOri.yaw - simState.bikeHeadingRel * 0.68;
-  camera.rotation.y = bikeWorldYaw + simState.headLookApex;
-  camera.rotation.x = roadOri.pitch - 0.042 + simState.pitchSuspension;
-  camera.rotation.z = -simState.leanAngle * 0.72 + roadOri.roll;
+  camera.rotation.y = simState.bikeYaw + simState.headLookApex;
+  camera.rotation.x = groundPitch - 0.042 + simState.pitchSuspension;
+  camera.rotation.z = -simState.leanAngle * 0.72 + (isOffRoad ? 0 : roadOri.roll * Math.cos(simState.bikeYaw - roadOri.yaw));
 
   camera.fov = 63 + (simState.speed / simState.maxSpeed) * 11;
   camera.updateProjectionMatrix();
 
-  // El chasis de la moto se inclina bajo el piloto y el manillar ejecuta el gesto físico de contramanillar
+  // El chasis de la moto se inclina bajo el piloto y el manillar acompaña el contramanillar / giro
   cockpitGroup.rotation.z = -simState.leanAngle * 0.22;
   cockpitGroup.position.y = -0.22 + simState.pitchSuspension * 0.35;
-  steeringAssembly.rotation.y = -simState.leanRate * 0.045 - simState.steeringInput * 0.042;
+  steeringAssembly.rotation.y = -simState.leanRate * 0.042 - simState.steeringInput * (simState.speed < 35 ? 0.14 : 0.045);
   frontWheelSpinGroup.rotation.x -= speedMps * 3.2 * dt;
-  mirrorReflTex.offset.x = simState.leanAngle * 0.15;
+  mirrorReflTex.offset.x = (simState.bikeYaw * 0.25) + simState.leanAngle * 0.15;
 
   // Actualizar la luz solar y su frustum de sombras para que siga al jugador
   sunLight.position.set(
@@ -3311,15 +3377,15 @@ function updateHandlingPhysics(dt) {
     camera.position.y + sunDirection.y * 110,
     camera.position.z + sunDirection.z * 110
   );
-  sunLight.target.position.set(camera.position.x, camera.position.y, camera.position.z - 25);
+  sunLight.target.position.set(camera.position.x + fwdX * 20, camera.position.y, camera.position.z + fwdZ * 20);
   sunLight.target.updateMatrixWorld();
 
-  // Faro delantero sigue la trazada real de la moto
+  // Faro delantero apunta en la dirección 360° real de la moto
   motoHeadlight.position.copy(camera.position);
   motoHeadlight.target.position.set(
-    camera.position.x - Math.sin(bikeWorldYaw) * 42,
+    camera.position.x + fwdX * 42,
     camera.position.y - 0.55,
-    camera.position.z - Math.cos(bikeWorldYaw) * 42
+    camera.position.z + fwdZ * 42
   );
   motoHeadlight.target.updateMatrixWorld();
 
@@ -3336,8 +3402,8 @@ function updateHandlingPhysics(dt) {
   waterNormTex.offset.x += 0.022 * dt;
   waterNormTex.offset.y += 0.014 * dt;
 
-  dustParticles.position.set(camera.position.x, roadOri.y, camera.position.z);
-  dustParticles.rotation.y = roadOri.yaw;
+  dustParticles.position.set(camera.position.x, centerInfo.groundY, camera.position.z);
+  dustParticles.rotation.y = simState.bikeYaw;
   const dArr = dustGeo.attributes.position.array;
   for (let i = 0; i < DUST_COUNT; i++) {
     dArr[i * 3 + 2] += (speedMps * 0.85 + 2.5) * dt;
@@ -3349,9 +3415,12 @@ function updateHandlingPhysics(dt) {
   }
   dustGeo.attributes.position.needsUpdate = true;
 
-  // Actualizar Árboles 3D y Rocas usando el vector perpendicular ortogonal exacto
+  // Actualizar Árboles 3D y Rocas anclados en el mundo en un radio simétrico alrededor del jugador
+  const natureSpan = natureObjects.length * 6.0;
+  const halfNatureSpan = natureSpan * 0.5;
   natureObjects.forEach(p => {
-    let pDist = simState.playerDistance + p.distAhead;
+    const rel = (((p.distAhead - simState.playerDistance) % natureSpan) + natureSpan + halfNatureSpan) % natureSpan - halfNatureSpan;
+    const pDist = simState.playerDistance + rel;
     const pt = getRoadPoint(pDist);
     const ori = getRoadOrientation(pDist);
 
@@ -3362,35 +3431,25 @@ function updateHandlingPhysics(dt) {
 
     const slopeY = getTerrainElevationOffset(p.offsetLateral, wx, wz);
     p.mesh.position.set(wx, pt.y + slopeY - 0.25, wz);
-
-    p.distAhead -= speedMps * dt;
-    if (p.distAhead < -18) {
-      p.distAhead += natureObjects.length * 6.0;
-    }
   });
 
-  // Actualizar Tachas, Postes y Carteles de Curva
+  // Actualizar Tachas, Postes y Carteles de Curva anclados en el mundo (en ambos sentidos de la ruta)
+  const detailSpan = roadDetails.length * 9.0;
+  const halfDetailSpan = detailSpan * 0.5;
   roadDetails.forEach(item => {
-    let cDist = simState.playerDistance + item.distOffset;
+    const rel = (((item.distOffset - simState.playerDistance) % detailSpan) + detailSpan + halfDetailSpan) % detailSpan - halfDetailSpan;
+    const cDist = simState.playerDistance + rel;
     const pt = getRoadPoint(cDist);
     const ori = getRoadOrientation(cDist);
 
     item.group.position.set(pt.x, pt.y, pt.z);
     item.group.rotation.set(0, ori.yaw, 0);
-
-    item.distOffset -= speedMps * dt;
-    if (item.distOffset < -12) {
-      item.distOffset += roadDetails.length * 9;
-    }
   });
 
-  // Actualizar Tráfico 3D y rotación de sus ruedas sobre su carril ortogonal
+  // Actualizar Tráfico 3D desplazándose en coordenadas mundiales en ambos carriles
   vehicles.forEach(v => {
-    if (v.laneOffset < 0) {
-      v.distAhead -= ((v.speed + simState.speed) / 3.6) * dt;
-    } else {
-      v.distAhead += ((v.speed - simState.speed) / 3.6) * dt;
-    }
+    const dirSign = v.laneOffset < 0 ? -1 : 1;
+    v.distAhead += dirSign * (v.speed / 3.6) * dt;
 
     if (v.wheels) {
       v.wheels.forEach(w => {
@@ -3398,7 +3457,11 @@ function updateHandlingPhysics(dt) {
       });
     }
 
-    const vDist = simState.playerDistance + v.distAhead;
+    const vSpan = 560;
+    const halfVSpan = vSpan * 0.5;
+    const relV = (((v.distAhead - simState.playerDistance) % vSpan) + vSpan + halfVSpan) % vSpan - halfVSpan;
+    const vDist = simState.playerDistance + relV;
+
     const vp = getRoadPoint(vDist);
     const vOri = getRoadOrientation(vDist);
 
@@ -3409,24 +3472,21 @@ function updateHandlingPhysics(dt) {
     v.mesh.rotation.set(0, 0, 0);
     v.mesh.rotation.y = vOri.yaw + (v.laneOffset < 0 ? Math.PI : 0);
 
-    if (v.distAhead < 7 && v.distAhead > -7 && !v.passed && v.laneOffset < 0) {
+    const distToPlayer = Math.hypot(simState.bikeX - v.mesh.position.x, simState.bikeZ - v.mesh.position.z);
+    if (distToPlayer < 8 && !v.passed) {
       window.soundEngine.playPassWhoosh();
       v.passed = true;
+    } else if (distToPlayer > 25) {
+      v.passed = false;
     }
 
-    const distToPlayer = Math.hypot(camera.position.x - v.mesh.position.x, camera.position.z - v.mesh.position.z);
-    if (distToPlayer < 2.7 && simState.active) {
+    if (distToPlayer < 2.6 && simState.active) {
       simState.speed = Math.max(0, simState.speed - 55);
       simState.bikeHealth = Math.max(0, simState.bikeHealth - 35);
       window.soundEngine.playTireScreech();
       if (simState.bikeHealth <= 0) {
         triggerBreakdown("Colisión Vial", "Choque severo contra un vehículo en la ruta.");
       }
-    }
-
-    if (v.distAhead < -28 || v.distAhead > 500) {
-      v.distAhead = 320 + Math.random() * 200;
-      v.passed = false;
     }
   });
 
@@ -3442,10 +3502,11 @@ function updateHandlingPhysics(dt) {
     window.soundEngine.update(simState.rpm, simState.maxRpm, simState.speed, simState.maxSpeed, simState.onRumble);
   }
 
-  // Distancia a destino
+  // Distancia a destino y Odómetro (teniendo en cuenta si avanzamos hacia el destino o dimos la vuelta)
   if (simState.speed > 0) {
     const kmCovered = (simState.speed / 3600) * dt * 18;
-    simState.targetDistanceKm = Math.max(0, simState.targetDistanceKm - kmCovered);
+    const alignmentWithRoute = Math.cos(simState.bikeYaw - roadOri.yaw);
+    simState.targetDistanceKm = Math.max(0, simState.targetDistanceKm - kmCovered * alignmentWithRoute);
     simState.odometer += kmCovered;
 
     if (simState.targetDistanceKm <= 0) arriveAtWaypoint();
@@ -3468,9 +3529,12 @@ function updateWorldMeshes() {
   const tCol = terrainColAttr.array;
 
   const halfRoad = ROAD_WIDTH / 2;
+  const halfRibbon = Math.floor(RIBBON_POINTS / 2);
 
   for (let i = 0; i < RIBBON_POINTS; i++) {
-    const sampleDist = Math.floor(simState.playerDistance / POINT_STEP) * POINT_STEP + (i * POINT_STEP) - 10.5;
+    // Centramos los 700 metros de ruta y terreno simétricamente (-350m a +350m) alrededor de la moto
+    // para que puedas girar 360° y manejar en cualquier sentido
+    const sampleDist = Math.floor(simState.playerDistance / POINT_STEP) * POINT_STEP + ((i - halfRibbon) * POINT_STEP);
     const p = getRoadPoint(sampleDist);
     const ori = getRoadOrientation(sampleDist);
 
